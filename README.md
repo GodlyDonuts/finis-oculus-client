@@ -25,7 +25,7 @@ The result is a dashboard that gives you a unique, data-driven "vibe check" on y
 
 This is a full-stack application built with a modern, scalable architecture.
 
-* **Front-End:** **React** (with React Hooks & Context API), **CSS/Tailwind CSS**, **Recharts** (for charts).
+* **Front-End:** **Next.js** (with Next.js Hooks & Context API), **CSS/Tailwind CSS**, **Recharts** (for charts).
 * **Back-End:** **Python (FastAPI)** for a high-performance REST API.
 * **Database:** **Google Firebase** (Firestore for NoSQL data, Firebase Auth for users).
 * **AI / NLP:** **FinBERT** (via the `transformers` library) for financial sentiment analysis.
@@ -42,7 +42,7 @@ This is the development plan to build the project from the ground up.
 1.  **Initialize Repos:** Create two repositories on GitHub (e.g., `providus-client` and `providus-api`).
 2.  **Firebase Project:** Create a new project in the Firebase console. Enable **Firestore** and **Authentication** (Email/Password & Google).
 3.  **Bootstrap Apps:**
-    * Front-End: `npx create-react-app providus-client`
+    * Front-End: `npx create-Next.js-app providus-client`
     * Back-End: Set up a Python virtual environment (`venv`) and install `fastapi`, `uvicorn`, `transformers`, `torch`, `beautifulsoup4`, `requests`, `firebase-admin`.
 
 ### Phase 1: The "Brain" (AI Data Pipeline)
@@ -70,11 +70,11 @@ This is the development plan to build the project from the ground up.
     * `/remove_from_watchlist/{ticker}`
     * (These will require a user authentication token to work).
 
-### Phase 3: The "Face" (Front-End React App)
+### Phase 3: The "Face" (Front-End Next.js App)
 *Goal: Create the user-facing website.*
 
-1.  **Set up React Router:** Create routes for `/`, `/login`, `/signup`, `/dashboard`, and `/stock/{ticker}`.
-2.  **Implement Auth:** Use the `firebase` JS SDK to create the `LoginPage` and `SignupPage`. Use React Context to manage the user's login state globally.
+1.  **Set up Next.js Router:** Create routes for `/`, `/login`, `/signup`, `/dashboard`, and `/stock/{ticker}`.
+2.  **Implement Auth:** Use the `firebase` JS SDK to create the `LoginPage` and `SignupPage`. Use Next.js Context to manage the user's login state globally.
 3.  **Build Dashboard:** Create the `Dashboard` component.
     * It should fetch the user's watchlist from Firestore.
     * For each stock in the watchlist, it should call your FastAPI `/get_stock_details/{ticker}` endpoint.
@@ -89,7 +89,7 @@ This is the development plan to build the project from the ground up.
 *Goal: Put your project on the internet.*
 
 1.  **Deploy Back-End:** Deploy your FastAPI application to **Render** or **Google Cloud Run**.
-2.  **Deploy Front-End:** Deploy your React app to **Vercel** or **Netlify**.
+2.  **Deploy Front-End:** Deploy your Next.js app to **Vercel** or **Netlify**.
 3.  **Configure CORS:** Ensure your back-end API allows requests from your front-end's Vercel URL.
 4.  **Set Env Variables:** Add all your API keys (Firebase, Stock API) as secret environment variables on your deployment platforms.
 
