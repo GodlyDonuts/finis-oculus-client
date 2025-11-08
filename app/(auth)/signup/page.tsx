@@ -24,7 +24,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex min-h-screen w-full bg-zinc-50 dark:bg-black">
+    <div className="flex min-h-screen w-full bg-background">
       {/* Left Column: Form */}
       <div className="flex w-full items-center justify-center p-8 md:w-1/2">
         <Card className="w-full max-w-sm">
@@ -62,11 +62,11 @@ export default function SignupPage() {
               <Button type="submit" className="w-full">
                 Sign Up
               </Button>
-              <p className="mt-4 text-center text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="mt-4 text-center text-sm text-muted-foreground">
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                  className="font-medium text-zinc-950 underline-offset-4 hover:underline dark:text-zinc-50"
+                  className="font-medium text-foreground underline-offset-4 hover:underline"
                 >
                   Login
                 </Link>
@@ -77,12 +77,12 @@ export default function SignupPage() {
       </div>
 
       {/* Right Column: Branded Element */}
-      <div className="hidden items-center justify-center bg-zinc-100 p-12 dark:bg-zinc-900 md:flex md:w-1/2">
+      <div className="hidden items-center justify-center bg-muted p-12 md:flex md:w-1/2">
         <div className="text-left">
-          <h2 className="text-4xl font-bold text-black dark:text-zinc-50">
+          <h2 className="text-4xl font-bold text-foreground">
             Finis Oculus
           </h2>
-          <p className="mt-4 text-lg text-zinc-600 dark:text-zinc-400">
+          <p className="mt-4 text-lg text-muted-foreground">
             Clarity in the chaos of market sentiment.
           </p>
         </div>

@@ -1,0 +1,63 @@
+Phenomenal UI/UX Plan: Finis OculusThis document outlines a client-side-only strategy to elevate your app from a clean shadcn/ui build to a world-class, "next big thing" financial analysis tool. The focus is entirely on UI, data visualization, and micro-interactions, all powered by enhanced mock data.1. Global UI & Brand IdentityYour app needs a unique, premium identity. Right now, it looks like a clean shadcn template.Action 1.1: Define Your Brand in app/globals.cssYour app/globals.css file [cite: app/globals.css] is your most powerful tool.Colors: Pick a unique, premium brand color. Default blue is fine, but a "fintech" green (like a stock market "up" color) or a deep, "intelligent" purple or blue could be your signature.Update --primary and --primary-foreground in both light and dark modes with your new HSL values.Radius: The default --radius: 0.5rem is a shadcn signature. Tweak this slightly to make it your own. Try 0.75rem for a softer, more modern feel, or 0.3rem for a sharper, more "pro-tool" look.Typography: You're using Geist [cite: app/layout.tsx], which is excellent. To add a "premium" feel, add a serif font (like Playfair Display or Inter's serif counterpart) just for h1 and h2 headings.Add the new font in app/layout.tsx.Add a utility class in globals.css (e.g., .font-serif-display) and apply it to your main page titles.Action 1.2: Create a Real LogoThe default Next.js app/favicon.ico [cite: app/favicon.ico] breaks the professional illusion. Create a simple, clean logo (even an SVG icon) for "Finis Oculus."Use this new logo as your favicon.Replace the "Finis Oculus" text in components/Header.tsx [cite: components/Header.tsx] with your new logo (using the Next.js <Image /> component). This single change makes the app feel 10x more legitimate.2. The Dashboard (app/dashboard/page.tsx)This is your user's command center. Let's make it feel powerful.Action 2.1: Add a "Market Overview" HeaderBefore the "Your Watchlist" h1, add a row of 3 Card components to show the status of major indices.New Mock Data: Create mock data for this:[
+  { "name": "S&P 500", "value": "5,432.10", "change": "+0.5%", "changeType": "positive" },
+  { "name": "NASDAQ", "value": "17,650.80", "change": "+1.2%", "changeType": "positive" },
+  { "name": "DOW 30", "value": "39,112.50", "change": "-0.2%", "changeType": "negative" }
+]
+UI: Each Card should show the name, value, and the change (colored green/red based on changeType). This immediately grounds the user in the market's state.Action 2.2: Evolve the StockCard.tsxThe current card [cite: components/StockCard.tsx] is good, but it's just text.Add a Sparkline: The most crucial change. We will use recharts.New Mock Data: Update your watchlist mock data to include a sparkline array.// In app/dashboard/page.tsx
+const watchlist = [
+  { "ticker": "AAPL", "name": "Apple Inc.", "price": 189.99, "sentiment": 0.75, "sparkline": [3, 4, 6, 5, 7, 8] },
+  { "ticker": "GOOGL", "name": "Alphabet Inc.", "price": 177.85, "sentiment": 0.5, "sparkline": [5, 4, 3, 5, 6, 7] },
+  { "ticker": "TSLA", "name": "Tesla, Inc.", "price": 175.22, "sentiment": -0.2, "sparkline": [8, 7, 6, 5, 4, 3] }
+]
+Update StockCard.tsx:Add sparkline: number[] to its props.In the CardContent, above the price and sentiment, add a ResponsiveContainer with a LineChart from recharts.Make the LineChart minimal: hideAxis, dot={false}, strokeWidth={2}.Set the stroke color based on the sentiment (or just use your primary brand color).Action 2.3: Enhance the Empty StateYour empty state [cite: app/dashboard/page.tsx] is a great start.Reduce Friction: Instead of only showing the AddStockDialog button [cite: components/AddStockDialog.tsx], embed the "Add Stock" UI directly into the empty state.UI: Keep the "Your watchlist is empty" text, but below it, add a simple form:<div className="flex w-full max-w-sm items-center space-x-2">
+  <Input placeholder="Enter ticker (e.g., AAPL)" />
+  <Button type="submit">Add Stock</Button>
+</div>
+(This can still open the dialog or just be a visual for now, but it shows the user the next step instantly).3. The Stock Detail Page (app/stock/[ticker]/page.tsx)This is your "money page." It must be a stunning data visualization showpiece.Action 3.1: Create Richer Mock DataYour current mock data [cite: app/stock/[ticker]/page.tsx] is too simple. We need time-series data and more "AI" output.New Mock Data Structure (for app/stock/[ticker]/page.tsx):const mockStockDetails = {
+  "ticker": "AAPL",
+  "name": "Apple Inc.",
+  "price": 189.99,
+  "change": "+1.20 (0.64%)",
+  "changeType": "positive",
+  "aiSummary": "AAPL shows strong positive sentiment driven by new product announcements and analyst upgrades, though concerns about supply chain remain a minor counter-point.",
+  "priceHistory": [
+    { "name": "Jan", "price": 150 }, { "name": "Feb", "price": 155 },
+    { "name": "Mar", "price": 160 }, { "name": "Apr", "price": 158 },
+    { "name": "May", "price": 165 }, { "name": "Jun", "price": 180 },
+    { "name": "Jul", "price": 190 }
+  ],
+  "sentiment": {
+    "score": 0.82,
+    "label": "Strongly Positive",
+    "history": [
+      { "name": "Jan", "score": 0.4 }, { "name": "Feb", "score": 0.5 },
+      { "name": "Mar", "score": 0.3 }, { "name": "Apr", "score": 0.6 },
+      { "name":Read": "May", "score": 0.8 }, { "name": "Jun", "score": 0.7 },
+      { "name": "Jul", "score": 0.82 }
+    ]
+  },
+  "recentNews": [
+    { "id": 1, "headline": "Apple Announces New 'Apple Intelligence' Features", "source": "MarketWatch", "timestamp": "2 hours ago", "sentiment": "positive" },
+    { "id": 2, "headline": "Analysts Upgrade AAPL Stock to 'Strong Buy'", "source": "Reuters", "timestamp": "5 hours ago", "sentiment": "positive" },
+    { "id": 3, "headline": "Minor Supply Chain Delays Reported in China", "source": "Bloomberg", "timestamp": "1 day ago", "sentiment": "negative" }
+  ],
+  "keyStats": {
+    "marketCap": "2.9T",
+    "peRatio": "30.2",
+    "dividendYield": "0.54%",
+    "52WeekHigh": "199.62",
+    "52WeekLow": "164.08"
+  }
+}
+Action 3.2: Redesign the LayoutUse your new mock data to build this phenomenal layout:Header:h1 [cite: app/stock/[ticker]/page.tsx] should be: Apple Inc. (AAPL).Below it, show the price: 189.99 in a large text-4xl font.Next to the price, show the change and changeType, colored green/red.New "AI Summary" Card (Full Width):Add a new Card at the top of the grid.CardTitle: "AI Analysis"CardContent: Display the aiSummary text. This immediately delivers on the "AI" promise.Main Content (Left, lg:col-span-2):Price Chart Card:Implement the recharts LineChart or AreaChart using the priceHistory data.Add Tooltip and XAxis/YAxis.Add Button toggles for timeframes (e.g., "1M", "6M", "1Y", "All"). These don't need to work, they just need to be there for the UI."Sentiment-Driving News" Card:Replace your "Recent News" card.Map over the recentNews data.Crucial UI: For each item, add a small colored dot or icon (e.g., green TrendingUp icon, red TrendingDown icon) next to the headline based on its sentiment property.Sidebar (Right, lg:col-span-1):"AI Sentiment" Card:Keep the large score (+0.82) and Strongly Positive label [cite: app/stock/[ticker]/page.tsx].Below this, add a recharts BarChart to visualize the sentiment.history. This shows how sentiment has trended over time."Key Statistics" Card (New):Add a new Card.Display the keyStats data in a simple two-column list.(e.g., <p>Market Cap</p> <p>2.9T</p>)4. Animation & Micro-InteractionsThis is what makes an app feel "alive."Action 4.1: Use framer-motionYou already have it installed [cite: app/page.tsx].Page Load: Wrap the main element on app/dashboard/page.tsx and app/stock/[ticker]/page.tsx in a <motion.div> for a simple fade-in.<motion.main
+  initial={{ opacity: 0, y: 10 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.3 }}
+  className="container..."
+>
+  {/* ...page content... */}
+</motion.main>
+Card Hover: In StockCard.tsx, add a hover effect to the Card component.<Card className="transition-all hover:shadow-lg hover:-translate-y-1">
+  {/* ... */}
+</Card>
+(You can use framer-motion's whileHover prop for an even smoother, spring-based effect).Number Flashing: When your (mock) data "updates," you can flash a color.Create a simple CSS animation in globals.css (e.g., flash-green) that flashes a green background glow.When the price on the stock detail page "updates," (you can simulate this with a useEffect), add that class to the price element for 1 second.
