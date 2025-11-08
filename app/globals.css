@@ -7,8 +7,14 @@
   --card-foreground: 240 10% 3.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 240 10% 3.9%;
-  --primary: 240 5.9% 10%;
-  --primary-foreground: 0 0% 98%;
+  
+  /* --- Finis Oculus Brand Update --- */
+  /* --primary: 240 5.9% 10%; */
+  /* --primary-foreground: 0 0% 98%; */
+  --primary: 142.1 76.2% 36.3%; /* Fintech Green */
+  --primary-foreground: 144 60% 96%;
+  /* --- End Brand Update --- */
+
   --secondary: 240 4.8% 95.9%;
   --secondary-foreground: 240 5.9% 10%;
   --muted: 240 4.8% 95.9%;
@@ -20,7 +26,11 @@
   --border: 240 5.9% 90%;
   --input: 240 5.9% 90%;
   --ring: 240 10% 3.9%;
-  --radius: 0.5rem;
+
+  /* --- Finis Oculus Brand Update --- */
+  /* --radius: 0.5rem; */
+  --radius: 0.75rem; /* Softer, more modern feel */
+  /* --- End Brand Update --- */
 }
 
 .dark {
@@ -30,8 +40,14 @@
   --card-foreground: 0 0% 98%;
   --popover: 240 10% 3.9%;
   --popover-foreground: 0 0% 98%;
-  --primary: 0 0% 98%;
-  --primary-foreground: 240 5.9% 10%;
+  
+  /* --- Finis Oculus Brand Update --- */
+  /* --primary: 0 0% 98%; */
+  /* --primary-foreground: 240 5.9% 10%; */
+  --primary: 142.1 70.2% 46.3%; /* Fintech Green (Dark) */
+  --primary-foreground: 144 60% 96%;
+  /* --- End Brand Update --- */
+  
   --secondary: 240 3.7% 15.9%;
   --secondary-foreground: 0 0% 98%;
   --muted: 240 3.7% 15.9%;
@@ -55,6 +71,26 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  /* You are correctly using Geist via the variable, so we can remove the Arial fallback */
-  /* font-family: Arial, Helvetica, sans-serif; */
 }
+
+/* --- Finis Oculus Additions --- */
+.font-serif-display {
+  font-family: var(--font-playfair-display);
+}
+
+@keyframes flash-green {
+  0% {
+    background-color: transparent;
+  }
+  25% {
+    background-color: hsla(142, 76%, 36%, 0.15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.flash-green {
+  animation: flash-green 1s ease-out;
+}
+/* --- End Additions --- */

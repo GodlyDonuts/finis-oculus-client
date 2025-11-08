@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-// Import firebase config here
-// import { auth } from '../firebase/config'; // You'll need to create this config file
+// Import the real auth instance
+import { auth } from '@/app/firebase/config';
 import { User, onAuthStateChanged } from 'firebase/auth';
 
 interface AuthContextType {
@@ -17,14 +17,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // const unsubscribe = onAuthStateChanged(auth, (user) => {
-    //   setUser(user);
-    //   setLoading(false);
-    // });
+    // This is the core Firebase auth listener
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
     
-    // Mock user for now until Firebase is set up
-    setLoading(false); 
-    // return () => unsubscribe();
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
   return (
