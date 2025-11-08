@@ -39,10 +39,10 @@ This is a full-stack application built with a modern, scalable architecture.
 This is the development plan to build the project from the ground up.
 
 ### Phase 0: Setup & Foundations
-1.  **Initialize Repos:** Create two repositories on GitHub (e.g., `providus-client` and `providus-api`).
+1.  **Initialize Repos:** Create two repositories on GitHub (e.g., `finis-oculus-client` and `finis-oculus-api`).
 2.  **Firebase Project:** Create a new project in the Firebase console. Enable **Firestore** and **Authentication** (Email/Password & Google).
 3.  **Bootstrap Apps:**
-    * Front-End: `npx create-Next.js-app providus-client`
+    * Front-End: `npx create-Next.js-app finis-oculus-client`
     * Back-End: Set up a Python virtual environment (`venv`) and install `fastapi`, `uvicorn`, `transformers`, `torch`, `beautifulsoup4`, `requests`, `firebase-admin`.
 
 ### Phase 1: The "Brain" (AI Data Pipeline)
