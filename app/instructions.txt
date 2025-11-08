@@ -1,0 +1,135 @@
+CLIENT-SIDE AESTHETIC & POLISH ROADMAP
+Project: Finis Oculus
+
+You've got a solid functional skeleton. Now, let's elevate it to be "highly modern, minimalistic, and beautiful." This plan focuses on design, user experience (UX), and the "wow" factor.
+
+---
+
+## 1. The "Impress" Stack (Core Tooling)
+
+To get that "ChatGPT-like," modern, and clean feel, you need the right tools.
+
+1.  **Install `shadcn/ui`:** This is the *most important* step for a modern, clean, and minimal UI. It is not a component library; it's a set of reusable, composable components that you copy into your project. It works perfectly with Tailwind.
+    * Run `npx shadcn-ui@latest init` in your terminal.
+    * This will give you beautiful, accessible components like `Button`, `Card`, `Input`, `Dialog`, and `Skeleton` that are styled via Tailwind and easy to customize.
+
+2.  **Install `Framer Motion`:** A beautiful UI *moves*. Modern apps use subtle, purposeful animations. `Framer Motion` is the standard for this in React.
+    * Run `npm install framer-motion`.
+    * We'll use this for page transitions and components appearing (e.g., "fade-in-up").
+
+3.  **Install `next-themes`:** Your `globals.css` is ready for dark mode. Let's make it functional. This library makes light/dark mode toggling simple.
+    * Run `npm install next-themes`.
+
+---
+
+## 2. Page-by-Page Enhancement Plan
+
+Let's apply these tools to your existing files.
+
+### `app/globals.css` & `app/layout.tsx`
+
+1.  **Theme Provider:** In `app/layout.tsx`, import and wrap your `AuthProvider` (and children) with the `ThemeProvider` from `next-themes`.
+    * `<ThemeProvider attribute="class" defaultTheme="system" enableSystem>`
+    * This enables light/dark mode.
+
+2.  **Typography:** You are correctly using the **Geist** font. *Stick to it.* Use Tailwind's `font-sans` and `font-mono` utility classes everywhere. Avoid system fonts like Arial.
+
+3.  **Color Palette (in `tailwind.config.js`):**
+    * "Minimalistic" and "fin-tech" means a clean, tight palette. Your current `globals.css` uses basic `--foreground` and `--background`.
+    * **Action:** Use Tailwind's built-in `zinc` or `slate` colors for your main UI (backgrounds, borders, cards). They are more professional and subtle than `black` and `white`.
+    * **Example (in `tailwind.config.js`):**
+        ```js
+        // ...
+        extend: {
+          colors: {
+            background: 'hsl(var(--background))',
+            foreground: 'hsl(var(--foreground))',
+            card: 'hsl(var(--card))',
+            card-foreground: 'hsl(var(--card-foreground))',
+            // ... etc. (shadcn/ui setup will help with this)
+          },
+        }
+        ```
+
+### `app/page.tsx` (The Landing Page)
+
+This is your app's "first impression." It must be stunning.
+
+1.  **Layout:** The centered text is fine, but let's make it a "Hero" section. Use a `min-h-screen` container.
+2.  **Animation:** Use `Framer Motion` to animate the hero content on load.
+    * Wrap the `h1` and `p` in a `<motion.div>`:
+    * `<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>`
+3.  **Buttons:** Replace the `Link` components with `shadcn/ui` **Button** components. This will give them a much cleaner, standardized look.
+    * `<Button asChild><Link href="/dashboard">Go to Dashboard</Link></Button>`
+    * `<Button variant="outline" asChild><Link href="/login">Login</Link></Button>`
+
+### `app/(auth)/login/page.tsx` & `app/(auth)/signup/page.tsx`
+
+This is a classic "pro" B2B/SaaS app pattern.
+
+1.  **Layout:** Don't just center the form. Use a **two-column layout**.
+    * **Left Column (e.g., 50% width):** The form itself.
+    * **Right Column (e.g., 50% width):** A branded element. Show your `Finis Oculus` name, a mission statement ("Clarity in the chaos of market sentiment"), or a subtle, abstract financial graphic.
+2.  **Form Components:** Replace *all* native elements with `shadcn/ui` components.
+    * `form` -> `shadcn/ui` **Card** (use `<Card>`, `<CardHeader>`, `<CardTitle>`, `<CardContent>`, `<CardFooter>`).
+    * `label` -> `shadcn/ui` **Label**.
+    * `input` -> `shadcn/ui` **Input**.
+    * `button` -> `shadcn/ui` **Button**.
+    * This *immediately* makes your form look like a modern, premium product.
+
+### `app/dashboard/page.tsx` (The Main Hub)
+
+This page *must* feel fast, clean, and data-rich.
+
+1.  **Layout:** Add a persistent **Navbar** or **Sidebar**.
+    * **Navbar (Top):** Create a `<nav>` component. Include the `Finis Oculus` logo/name, a link to the Dashboard, and a user profile button (with a dropdown for "Logout" and a light/dark mode toggle).
+    * **Sidebar (Left):** Alternatively, a "ChatGPT-like" sidebar with links and user info.
+2.  **Skeleton Loading:** This is a *key* "impress" feature. While your watchlist is fetching, show a *skeleton* of the UI.
+    * Install `shadcn/ui` **Skeleton**.
+    * While `loading` is true, map over a "fake" array `[1, 2, 3]` and render `<StockCardSkeleton />`.
+    * This "skeleton" component would be a `shadcn/ui` **Card** containing a `Skeleton` for the title, a `Skeleton` for the price, and a `Skeleton` for the sentiment.
+3.  **Component:** Create a new component: `app/components/StockCard.tsx`.
+    * This component should take a `ticker` as a prop.
+    * Inside the component, use a **Data Fetching hook** (like `useSWR` or `react-query`) to fetch `/get_stock_details/{ticker}`. This component will manage its *own* data.
+    * Use the `shadcn/ui` **Card** as the container.
+    * Inside the card, show:
+        * `<CardHeader>`: Ticker (`AAPL`) and full name (`Apple Inc.`).
+        * `<CardContent>`: The current price and the sentiment score.
+        * **Pro Touch:** Add a tiny **sparkline chart** (using `Recharts`) inside the card showing a mini-graph of the price.
+    * Make the entire card clickable, linking to `/stock/{ticker}`.
+
+### `app/stock/[ticker]/page.tsx` (The Detail Page)
+
+This is your main data-viz page. Clarity is key.
+
+1.  **Layout:** Your two-column layout is good. Add the persistent Navbar/Sidebar here too.
+2.  **Sentiment Card:** Replace the simple `div` with a `shadcn/ui` **Card**.
+    * Use a large, bold font (e.g., `text-4xl font-bold`).
+    * **Dynamically color** the score: `text-green-500` for positive, `text-red-500` for negative.
+3.  **Price Chart:**
+    * Use `Recharts` as planned.
+    * **Aesthetic Tip:** Make it *minimal*. Hide the grid lines, use a simple `Tooltip`, and use a clean color for the line.
+    * Wrap the chart in a `shadcn/ui` **Card** with a `<CardHeader>` that says "Price Chart".
+4.  **News Feed:**
+    * Wrap this in a `shadcn/ui` **Card** as well ("Recent News").
+    * Inside `<CardContent>`, map over the news items.
+    * Don't just show the headline. Show the **source** (e.g., "MarketWatch") and the **timestamp** (e.g., "2 hours ago") in a smaller, `text-zinc-500` font. This adds immense credibility.
+
+---
+
+## 3. The "Finishing Polish" (Small Details)
+
+These small things make a huge difference in perceived quality.
+
+1.  **Toasts (Notifications):**
+    * Install `sonner` (a beautiful, minimal toast library that works well with shadcn).
+    * Show a toast on login success ("Welcome back!").
+    * Show a toast on *error* (e.g., if the API fails to fetch stock details). *Never* let your app fail silently.
+
+2.  **Empty States:**
+    * What does the dashboard look like with an empty watchlist?
+    * Don't show a blank page. Show a nice, centered message: "Your watchlist is empty." with a `shadcn/ui` **Button** that says "Add a Stock" (which can open a `Dialog` modal).
+
+3.  **Favicon:**
+    * The default `.ico` is not impressive.
+    * Create a simple, clean SVG logo (maybe "FO") and use a generator to create a proper `favicon.ico`, `apple-touch-icon.png`, etc. Use a modern `manifest.json`.
