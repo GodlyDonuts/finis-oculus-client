@@ -1,3 +1,5 @@
+// File: components/AddStockDialog.tsx
+
 "use client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -14,21 +16,59 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-export function AddStockDialog() {
-  const [ticker, setTicker] = useState("");
+interface AddStockDialogProps {
+  onStockAdded: (ticker: string) => void;
+}
 
-  const handleAddStock = () => {
-    // Add logic to save the ticker to Firestore here
-    console.log("Adding stock:", ticker.toUpperCase());
-    toast.success(`${ticker.toUpperCase()} added to watchlist!`);
-    // You would also close the dialog here, which can be done
-    // by controlling the 'open' prop of <Dialog />
+export function AddStockDialog({ onStockAdded }: AddStockDialogProps) {
+  const [ticker, setTicker] = useState("");
+  const [open, setOpen] = useState(false);
+  // --- New state for the validation loading ---
+  const [isValidating, setIsValidating] = useState(false);
+
+  // --- Updated handler ---
+  const handleValidateAndAdd = async () => {
+    if (!ticker.trim()) {
+      toast.error("Please enter a ticker.");
+      return;
+    }
+
+    const upperTicker = ticker.toUpperCase();
+    setIsValidating(true);
+    const validationToastId = toast.loading(`Validating ${upperTicker}...`);
+
+    try {
+      // 1. Call your new validation route
+      const response = await fetch(`/api/validate/${upperTicker}`);
+
+      if (!response.ok) {
+        // Ticker is invalid or not found
+        const data = await response.json();
+        toast.error(data.error || `Invalid ticker: ${upperTicker}`, { id: validationToastId });
+        return;
+      }
+
+      // 2. If validation is successful (response.ok)
+      toast.dismiss(validationToastId); // Dismiss the "Validating..." toast
+      onStockAdded(upperTicker); // Call the dashboard's add function
+      
+      // 3. Close the dialog and reset the form
+      setOpen(false);
+      setTicker("");
+
+    } catch (error) {
+      // For network errors, etc.
+      toast.error("Validation failed. Please try again.", { id: validationToastId });
+      console.error("Validation error:", error);
+    } finally {
+      setIsValidating(false);
+    }
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="mt-6">Add a Stock</Button>
+        <Button>Add Stock</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -37,7 +77,13 @@ export function AddStockDialog() {
             Enter a stock ticker (e.g., AAPL) to add it to your watchlist.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleValidateAndAdd();
+          }}
+          className="grid gap-4 py-4"
+        >
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="ticker" className="text-right">
               Ticker
@@ -48,11 +94,15 @@ export function AddStockDialog() {
               onChange={(e) => setTicker(e.target.value)}
               className="col-span-3"
               placeholder="AAPL"
+              disabled={isValidating} // Disable input while validating
             />
           </div>
-        </div>
+        </form>
         <DialogFooter>
-          <Button onClick={handleAddStock}>Add Stock</Button>
+          {/* --- Button handler is updated --- */}
+          <Button onClick={handleValidateAndAdd} type="submit" disabled={isValidating}>
+            {isValidating ? "Validating..." : "Add Stock"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
