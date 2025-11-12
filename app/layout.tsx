@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Playfair_Display } from "next/font/google"; // 
+import { Playfair_Display } from "next/font/google"; 
 import "./globals.css";
 import { AuthProvider } from "./context/authcontext";
 import { ThemeProvider } from "next-themes";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/toaster"; // Use the updated Toaster
+import { cn } from "@/lib/utils"; // Import cn
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,7 +17,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// 
 const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair-display",
@@ -35,7 +35,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} antialiased`}
+        className={cn(
+          geistSans.variable, 
+          geistMono.variable, 
+          playfair.variable, 
+          "antialiased font-sans" // Set sans as the default
+        )}
       >
         <ThemeProvider
           attribute="class"

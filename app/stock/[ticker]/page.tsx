@@ -1,6 +1,10 @@
+// app/stock/[ticker]/page.tsx
+
 "use client";
 import { useParams } from "next/navigation";
-import { useState, useEffect } from "react"; //
+import { useState, useEffect } from "react";
+import { useAuth } from "@/app/context/authcontext";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -13,12 +17,13 @@ import { motion } from "framer-motion";
 import {
   AreaChart,
   Area,
-  BarChart,
-  Bar,
   ResponsiveContainer,
   XAxis,
   YAxis,
   Tooltip,
+  TooltipProps,
+  BarChart, // Added BarChart
+  Bar, // Added Bar
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,105 +33,81 @@ import {
   Zap,
   BarChart3,
   Users,
-} from "lucide-react"; //
-import { StockDetailPageSkeleton } from "@/components/StockDetailPageSkeleton"; //
+  Newspaper,
+  Scale,
+  BrainCircuit,
+} from "lucide-react";
+import { StockDetailPageSkeleton } from "@/components/StockDetailPageSkeleton";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { FinancialScorecard } from "@/components/FinancialScorecard";
+import { TechnicalAnalysis } from "@/components/TechnicalAnalysis";
+import { PremiumGate } from "@/components/PremiumGate";
 
-// --- Richer Mock Data ---
-const mockStockDetails = {
-  ticker: "AAPL",
-  name: "Apple Inc.",
-  price: 189.99,
-  change: "+1.20 (0.64%)",
-  changeType: "positive",
-  aiSummary:
-    "AAPL shows strong positive sentiment driven by new product announcements and analyst upgrades, though concerns about supply chain remain a minor counter-point.",
-  priceHistory: [
-    { name: "Jan", price: 150 },
-    { name: "Feb", price: 155 },
-    { name: "Mar", price: 160 },
-    { name: "Apr", price: 158 },
-    { name: "May", price: 165 },
-    { name: "Jun", price: 180 },
-    { name: "Jul", price: 190 },
-  ],
-  sentiment: {
-    score: 0.82,
-    label: "Strongly Positive",
-    history: [
-      { name: "Jan", score: 0.4 },
-      { name: "Feb", score: 0.5 },
-      { name: "Mar", score: 0.3 },
-      { name: "Apr", score: 0.6 },
-      { name: "May", score: 0.8 },
-      { name: "Jun", score: 0.7 },
-      { name: "Jul", score: 0.82 },
-    ],
-  },
-  recentNews: [
-    {
-      id: 1,
-      headline: "Apple Announces New 'Apple Intelligence' Features",
-      source: "MarketWatch",
-      timestamp: "2 hours ago",
-      sentiment: "positive",
-    },
-    {
-      id: 2,
-      headline: "Analysts Upgrade AAPL Stock to 'Strong Buy'",
-      source: "Reuters",
-      timestamp: "5 hours ago",
-      sentiment: "positive",
-    },
-    {
-      id: 3,
-      headline: "Minor Supply Chain Delays Reported in China",
-      source: "Bloomberg",
-      timestamp: "1 day ago",
-      sentiment: "negative",
-    },
-  ],
-  keyStats: {
-    "Market Cap": "2.9T",
-    "P/E Ratio": "30.2",
-    "Dividend Yield": "0.54%",
-    "52 Week High": "199.62",
-    "52 Week Low": "164.08",
-  },
-  //
-  aiInsights: [
-    {
-      id: 1,
-      insight:
-        "Positive sentiment is 82% correlated with recent 'Apple Intelligence' news flow.",
-      type: "correlation",
-    },
-    {
-      id: 2,
-      insight: "Price movement shows potential resistance near $192.50.",
-      type: "technical",
-    },
-    {
-      id: 3,
-      insight:
-        "Social media volume is 25% higher than average, indicating high retail interest.",
-      type: "social",
-    },
-  ],
+// ... (Existing Type Definitions)
+
+type PriceHistoryPoint = {
+  name: string;
+  price: number;
 };
-// --- End Mock Data ---
 
-// Helper for news icons
+// --- NEW/UPDATED TYPE DEFINITION FOR PREMIUM DATA ---
+type RatioRating = 'Strong' | 'Neutral' | 'Weak';
+type TechnicalSignal = 'Buy' | 'Hold' | 'Sell' | 'N/A';
+
+type StockDetailData = {
+  ticker: string;
+  name: string;
+  price: number;
+  previousClose: number;
+  change: string;
+  changeType: "positive" | "negative" | "neutral";
+  aiSummary: string;
+  priceHistory: PriceHistoryPoint[];
+  sentiment: {
+    score: number;
+    label: string;
+    history: { name: string; score: number }[];
+  };
+  recentNews: {
+    id: string | number;
+    headline: string;
+    source: string;
+    timestamp: string;
+    sentiment: "positive" | "negative" | "neutral";
+  }[];
+  keyStats: Record<string, string>;
+  aiInsights: {
+    id: string | number;
+    insight: string;
+    type: "correlation" | "technical" | "social";
+  }[];
+  financialRatios: Record<string, { value: string | number, rating: RatioRating }>;
+  technicalIndicators: Record<string, { value: number, signal: TechnicalSignal }>;
+};
+// --- END NEW/UPDATED TYPE DEFINITION ---
+
+type ChartApiResponse = {
+  priceHistory: PriceHistoryPoint[];
+  price: number;
+  change: string;
+  changeType: "positive" | "negative" | "neutral";
+}
+
+const chartRanges = ['1D', '1W', '1M', '6M', 'YTD', '1Y', '5Y', 'Max'];
+
+// ... (NewsSentimentIcon and insightIconMap remain the same)
+
 const NewsSentimentIcon = ({ sentiment }: { sentiment: string }) => {
   if (sentiment === "positive") {
-    return <TrendingUp className="h-4 w-4 flex-shrink-0 text-green-500" />;
+    return <TrendingUp className="h-5 w-5 flex-shrink-0 text-green-500" />;
   }
   if (sentiment === "negative") {
-    return <TrendingDown className="h-4 w-4 flex-shrink-0 text-red-500" />;
+    return <TrendingDown className="h-5 w-5 flex-shrink-0 text-red-500" />;
   }
-  return <Minus className="h-4 w-4 flex-shrink-0 text-gray-500" />;
+  return <Minus className="h-5 w-5 flex-shrink-0 text-gray-500" />;
 };
 
-//
 const insightIconMap = {
   correlation: Zap,
   technical: BarChart3,
@@ -135,79 +116,164 @@ const insightIconMap = {
 
 export default function StockDetailPage() {
   const params = useParams();
-  const ticker = (params.ticker as string).toUpperCase();
+  const ticker = (params?.ticker as string)?.toUpperCase() || "";
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [stockData, setStockData] = useState<StockDetailData | null>(null);
+  const [hoveredPrice, setHoveredPrice] = useState<number | null>(null);
+  const [hoveredChange, setHoveredChange] = useState<string | null>(null);
+  const [hoveredChangeType, setHoveredChangeType] = useState<
+    "positive" | "negative" | "neutral"
+  >("neutral");
 
-  // --- State Management ---
-  const [isLoading, setIsLoading] = useState(true); //
-  const [stockData, setStockData] =
-    useState<typeof mockStockDetails | null>(null); //
-  const [hoveredPrice, setHoveredPrice] = useState<number | null>(null); //
-  const [hoveredChange, setHoveredChange] = useState<string | null>(null); //
-  const [flashKey, setFlashKey] = useState(0); //
+  const [activeRange, setActiveRange] = useState('6M');
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryPoint[]>([]);
+  const [isChartLoading, setIsChartLoading] = useState(false);
+  
+  // --- NEW STATE FOR PRICE ANIMATION ---
+  const [prevPrice, setPrevPrice] = useState(0);
+  const [flashClass, setFlashClass] = useState("");
+  // --- END NEW STATE ---
 
-  // --- Data Loading & Simulation ---
-  // Initial load
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setStockData(mockStockDetails);
-      setIsLoading(false);
-    }, 1000); // Simulate 1 second load
-    return () => clearTimeout(timer);
-  }, []);
+    if (!user || !ticker) {
+      return;
+    }
 
-  // Real-time update simulation
+    const fetchStockDetails = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/stock-details/${ticker}`);
+
+        if (!res.ok) {
+          let errorMessage = `Server error (${res.status})`;
+          try {
+            const errorBody = await res.text();
+            if (errorBody && errorBody.startsWith('{')) {
+              const errorJson = JSON.parse(errorBody);
+              errorMessage = errorJson.error || errorMessage;
+            } else if (errorBody) {
+              errorMessage = `Server error: ${res.statusText}`;
+            }
+          } catch (e) {
+            errorMessage = `Server error: ${res.statusText}`;
+          }
+          throw new Error(errorMessage);
+        }
+
+        const data: StockDetailData = await res.json();
+        setStockData(data);
+        setPriceHistory(data.priceHistory || []);
+        // Initialize prevPrice on first load
+        setPrevPrice(data.price); 
+
+      } catch (error: any) {
+        console.error("Failed to fetch stock details:", error);
+        toast.error(`Could not load data for ${ticker}: ${error.message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStockDetails();
+
+  }, [user, ticker]);
+
+  // --- NEW useEffect for Price Flash Animation ---
   useEffect(() => {
-    if (!stockData) return; // Don't run simulation if data isn't loaded
+    if (stockData && stockData.price !== prevPrice && prevPrice !== 0) {
+        if (stockData.price > prevPrice) {
+            setFlashClass("flash-green");
+        } else if (stockData.price < prevPrice) {
+            setFlashClass("flash-red");
+        }
+        
+        // Update prevPrice AFTER determining the flash class
+        setPrevPrice(stockData.price);
 
-    const intervalId = setInterval(() => {
-      setStockData((prevData) => {
-        if (!prevData) return null;
-        const newPrice =
-          prevData.price + (Math.random() - 0.5) * 0.5; //
-        const newChangeVal = newPrice - prevData.priceHistory[0].price;
-        const newChangePct = (newChangeVal / prevData.priceHistory[0].price) * 100;
+        // Remove the class after the animation (1s defined in globals.css)
+        const timer = setTimeout(() => {
+            setFlashClass("");
+        }, 1000);
 
+        return () => clearTimeout(timer);
+    }
+    if (stockData && prevPrice === 0) {
+        setPrevPrice(stockData.price);
+    }
+  }, [stockData, prevPrice]);
+  // --- END NEW useEffect ---
+
+  const handleRangeChange = async (range: string) => {
+    if (range === activeRange) return;
+    setActiveRange(range);
+    setIsChartLoading(true);
+
+    try {
+      const res = await fetch(`/api/stock-chart/${ticker}?range=${range}`);
+      if (!res.ok) {
+        throw new Error('Failed to load chart data');
+      }
+      const data: ChartApiResponse = await res.json();
+      
+      setPriceHistory(data.priceHistory);
+
+      setStockData((prev) => {
+        if (!prev) return null;
         return {
-          ...prevData,
-          price: newPrice,
-          change: `${
-            newChangeVal > 0 ? "+" : ""
-          }${newChangeVal.toFixed(2)} (${newChangePct.toFixed(2)}%)`,
-          changeType: newChangeVal > 0 ? "positive" : "negative",
+          ...prev,
+          price: data.price,
+          change: data.change,
+          changeType: data.changeType,
         };
       });
-      setFlashKey((k) => k + 1); //
-    }, 3000); // Update every 3 seconds
 
-    return () => clearInterval(intervalId); //
-  }, [stockData]); // Re-run if stockData reference changes (which it does)
-
-  // --- Chart Hover Handlers ---
-  const handleChartHover = (e: any) => {
-    if (e.activePayload && e.activePayload.length > 0) {
-      const payload = e.activePayload[0].payload;
-      setHoveredPrice(payload.price); //
-
-      // Calculate change relative to opening price
-      if (stockData) {
-        const openingPrice = stockData.priceHistory[0].price;
-        const changeVal = payload.price - openingPrice;
-        const changePct = (changeVal / openingPrice) * 100;
-        const changeStr = `${
-          changeVal > 0 ? "+" : ""
-        }${changeVal.toFixed(2)} (${changePct.toFixed(2)}%)`;
-        setHoveredChange(changeStr);
-      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message);
+    } finally {
+      setIsChartLoading(false);
     }
   };
 
-  const handleChartMouseLeave = () => { //
-    setHoveredPrice(null);
-    setHoveredChange(null);
+  const getHoverChange = (price: number, base: number) => {
+    if (!price || !base) return { text: "-", type: "neutral" };
+    const changeVal = price - base;
+    const changePct = (changeVal / base) * 100;
+    const type =
+      changeVal > 0 ? "positive" : changeVal < 0 ? "negative" : "neutral";
+    const text = `${changeVal > 0 ? "+" : ""}${changeVal.toFixed(
+      2
+    )} (${changePct.toFixed(2)}%)`;
+    return { text, type };
   };
 
-  // --- Render Logic ---
-  if (isLoading || !stockData) { //
+  const handleChartHover = (e: any) => {
+    if (
+      e &&
+      e.activeTooltipIndex != null &&
+      priceHistory[e.activeTooltipIndex] &&
+      stockData
+    ) {
+      const payload = priceHistory[e.activeTooltipIndex];
+      const price = payload.price;
+      const { text, type } = getHoverChange(
+        price,
+        stockData.previousClose
+      );
+      setHoveredPrice(price);
+      setHoveredChange(text);
+      setHoveredChangeType(type);
+    }
+  };
+
+  const handleChartMouseLeave = () => {
+    setHoveredPrice(null);
+    setHoveredChange(null);
+    setHoveredChangeType("neutral");
+  };
+
+  if (isLoading || !stockData) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -216,11 +282,33 @@ export default function StockDetailPage() {
     );
   }
 
-  const data = stockData; //
+  const data = stockData;
   const priceColor =
-    data.changeType === "positive" ? "text-green-500" : "text-red-500";
+    hoveredPrice
+      ? hoveredChangeType === "positive"
+        ? "text-green-500"
+        : hoveredChangeType === "negative"
+        ? "text-red-500"
+        : "text-foreground"
+      : data.changeType === "positive"
+      ? "text-green-500"
+      : data.changeType === "negative"
+      ? "text-red-500"
+      : "text-foreground";
+  
   const sentimentColor =
-    data.sentiment.score > 0 ? "text-green-500" : "text-red-500";
+    data.sentiment?.score > 0
+      ? "text-green-500"
+      : data.sentiment?.score < 0
+      ? "text-red-500"
+      : "text-gray-500";
+  
+  const sentimentBorderColor =
+    data.sentiment?.score > 0
+      ? "border-green-500/30"
+      : data.sentiment?.score < 0
+      ? "border-red-500/30"
+      : "border-border/50";
 
   return (
     <div className="min-h-screen bg-background">
@@ -231,185 +319,218 @@ export default function StockDetailPage() {
         transition={{ duration: 0.3 }}
         className="container mx-auto p-8"
       >
-        <header className="mb-8">
+        <header className="mb-4">
           <h1 className="font-serif-display text-5xl font-semibold text-foreground">
-            {data.name} ({data.ticker})
+            {data.name || ticker}
           </h1>
-          <div className="mt-2 flex items-baseline gap-4">
-            {/* */}
-            <motion.span
-              key={flashKey} //
-              className={`text-4xl font-bold ${
-                flashKey > 0 ? "flash-green" : "" //
-              }`}
-              initial={{ opacity: 0 }} //
-              animate={{ opacity: 1 }} //
-              transition={{ duration: 0.5 }} //
-            >
-              {hoveredPrice ? `$${hoveredPrice.toFixed(2)}` : `$${data.price.toFixed(2)}`}
-            </motion.span>
-            <span className={`text-2xl font-medium ${priceColor}`}>
-              {hoveredChange ?? data.change}
-            </span>
-          </div>
+          <p className="text-xl font-medium text-muted-foreground">
+             {ticker}
+          </p>
         </header>
 
+        {/* --- NEW: Animated Price Bar --- */}
+        <motion.div 
+            key={flashClass} 
+            className={cn(
+                "mb-8 flex items-baseline gap-6 rounded-2xl p-6 transition-all duration-1000",
+                flashClass, // Applies the flash-green/red animation
+                "border border-border/50 bg-card shadow-lg" // Card-like appearance
+            )}
+            initial={{ opacity: 0.8 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+        >
+            <span className={cn("text-6xl font-extrabold tracking-tight", priceColor)}>
+                {hoveredPrice
+                    ? `$${hoveredPrice.toFixed(2)}`
+                    : `$${data.price?.toFixed(2) ?? "N/A"}`}
+            </span>
+            <span className={cn("text-3xl font-semibold", priceColor)}>
+                {hoveredChange ? hoveredChange : data.change ?? "-"}
+            </span>
+        </motion.div>
+        {/* --- END NEW PRICE BAR --- */}
+
+
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {/* --- Main Content (Left) --- */}
+          {/* --- Main Content (Left, 2/3rds) --- */}
           <div className="flex flex-col gap-8 lg:col-span-2">
+            
+            {/* Price Chart Card (Remains Top Priority) */}
             <Card>
               <CardHeader>
-                <CardTitle>AI Analysis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-base leading-relaxed text-muted-foreground">
-                  {data.aiSummary}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Price Chart</CardTitle>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" className="opacity-50">
-                      1M
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      6M
-                    </Button>
-                    <Button variant="ghost" size="sm" className="opacity-50">
-                      1Y
-                    </Button>
-                    <Button variant="ghost" size="sm" className="opacity-50">
-                      All
-                    </Button>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <CardTitle>Price History</CardTitle>
+                  <div className="flex flex-wrap gap-1">
+                    {chartRanges.map((range) => (
+                      <Button
+                        key={range}
+                        variant={activeRange === range ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => handleRangeChange(range)}
+                        disabled={isChartLoading}
+                      >
+                        {range}
+                      </Button>
+                    ))}
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="h-96 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={data.priceHistory}
-                      margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
-                      onMouseMove={handleChartHover} //
-                      onMouseLeave={handleChartMouseLeave} //
-                    >
-                      <defs>
-                        <linearGradient
-                          id="priceGradient"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor="hsl(var(--primary))"
-                            stopOpacity={0.3}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="hsl(var(--primary))"
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="name" fontSize={12} />
-                      <YAxis fontSize={12} tickFormatter={(val) => `$${val}`} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--background))",
-                          borderColor: "hsl(var(--border))",
-                          borderRadius: "var(--radius)",
-                        }}
-                        formatter={(value: number) => [
-                          `$${value.toFixed(2)}`,
-                          "Price",
-                        ]}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="price"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
-                        fill="url(#priceGradient)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Sentiment-Driving News</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-6">
-                {data.recentNews.map((item) => (
-                  <div key={item.id} className="flex items-start gap-3">
-                    <NewsSentimentIcon sentiment={item.sentiment} />
-                    <div className="flex flex-col gap-1">
-                      <p className="font-medium leading-tight text-foreground">
-                        {item.headline}
-                      </p>
-                      <div className="flex gap-2 text-sm text-muted-foreground">
-                        <span>{item.source}</span>
-                        <span>&middot;</span>
-                        <span>{item.timestamp}</span>
-                      </div>
-                    </div>
+                  <div className="h-96 w-full">
+                    {isChartLoading ? (
+                      <Skeleton className="h-96 w-full rounded-lg" />
+                    ) : (
+                      priceHistory.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart
+                            data={priceHistory}
+                            onMouseMove={handleChartHover}
+                            onMouseLeave={handleChartMouseLeave}
+                          >
+                            <defs>
+                              <linearGradient
+                                id="priceGradient"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="5%"
+                                  stopColor="hsl(var(--primary))"
+                                  stopOpacity={0.3}
+                                />
+                                <stop
+                                  offset="95%"
+                                  stopColor="hsl(var(--primary))"
+                                  stopOpacity={0}
+                                />
+                              </linearGradient>
+                            </defs>
+                            <XAxis dataKey="name" fontSize={12} axisLine={false} tickLine={false} />
+                            <YAxis
+                              fontSize={12}
+                              tickFormatter={(val) => `$${val}`}
+                              domain={['auto', 'auto']}
+                              axisLine={false}
+                              tickLine={false}
+                              width={50}
+                            />
+                            <Tooltip
+                              content={<CustomTooltip />}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="price"
+                              stroke="hsl(var(--primary))"
+                              strokeWidth={2}
+                              fill="url(#priceGradient)"
+                              activeDot={{
+                                r: 6,
+                                stroke: "hsl(var(--primary))",
+                                strokeWidth: 2,
+                                fill: "hsl(var(--background))",
+                              }}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-muted-foreground">
+                          No price data available for this range.
+                        </div>
+                      )
+                    )}
                   </div>
-                ))}
               </CardContent>
             </Card>
+            
+            {/* --- NEW: Consolidated Info Grid (AI Summary & News) --- */}
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                {/* AI Summary Card (Left Column of sub-grid) */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><BrainCircuit className="h-5 w-5 text-primary" /> AI Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-base leading-relaxed text-muted-foreground">
+                            {data.aiSummary || 'No analysis available.'}
+                        </p>
+                    </CardContent>
+                </Card>
+                
+                {/* Sentiment-Driving News (Right Column of sub-grid) */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Sentiment-Driving News</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-4">
+                        {(data.recentNews || []).length > 0 ? (
+                            (data.recentNews || []).slice(0, 4).map((item) => ( // Limit to 4 for better aesthetic
+                                <div key={item.id} className="flex items-start gap-3 border-b border-border/50 pb-4 last:border-b-0 last:pb-0">
+                                    <NewsSentimentIcon sentiment={item.sentiment} />
+                                    <div className="flex flex-col gap-0.5">
+                                        <p className="font-medium leading-snug text-foreground">
+                                            {item.headline}
+                                        </p>
+                                        <div className="flex gap-2 text-xs text-muted-foreground">
+                                            <span>{item.source}</span>
+                                            <span>&middot;</span>
+                                            <span>{item.timestamp.split(',')[0]}</span> {/* Use only date part */}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="flex flex-col items-center gap-3 py-4 text-center">
+                                <Newspaper className="h-8 w-8 text-muted-foreground" />
+                                <p className="font-medium text-muted-foreground text-sm">No recent news found.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
           </div>
 
-          {/* --- Sidebar (Right) --- */}
+          {/* --- Sidebar (Right, 1/3rd) - Premium Focused --- */}
           <div className="flex flex-col gap-8 lg:col-span-1">
-            <Card>
+            
+            {/* AI Sentiment Card (Top Priority in Sidebar) */}
+            <Card className={cn("border-2", sentimentBorderColor)}>
               <CardHeader>
-                <CardTitle>AI Sentiment</CardTitle>
+                <CardTitle>AI Sentiment Score</CardTitle>
+                <CardDescription>Based on real-time news and social volume analysis.</CardDescription>
               </CardHeader>
               <CardContent>
-                {/* */}
                 <motion.p
-                  className={`text-5xl font-bold ${sentimentColor}`}
+                  className={cn("text-7xl font-bold tracking-tight", sentimentColor)}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.5 }}
                 >
-                  {data.sentiment.score > 0 ? "+" : ""}
-                  {data.sentiment.score.toFixed(2)}
+                  {data.sentiment?.score > 0 ? "+" : ""}
+                  {data.sentiment?.score?.toFixed(2) ?? 'N/A'}
                 </motion.p>
-                <p className="text-xl text-muted-foreground">
-                  {data.sentiment.label}
+                <p className="text-2xl font-medium text-muted-foreground">
+                  {data.sentiment?.label ?? 'No Data'}
                 </p>
+                {/* Sentiment History Bar Chart */}
                 <div className="mt-6 h-40 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={data.sentiment.history}
+                      data={data.sentiment?.history || []}
                       margin={{ top: 5, right: 0, left: -30, bottom: 5 }}
                     >
-                      <XAxis dataKey="name" fontSize={12} />
-                      <YAxis fontSize={12} />
+                      <XAxis dataKey="name" fontSize={12} axisLine={false} tickLine={false} />
+                      <YAxis fontSize={12} domain={['auto', 'auto']} axisLine={false} tickLine={false} />
                       <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--background))",
-                          borderColor: "hsl(var(--border))",
-                          borderRadius: "var(--radius)",
-                        }}
-                        formatter={(value: number) => [
-                          value.toFixed(2),
-                          "Score",
-                        ]}
+                        content={<CustomTooltip isBarChart={true} />}
                       />
                       <Bar
                         dataKey="score"
                         fill="hsl(var(--primary))"
                         opacity={0.6}
+                        radius={[4, 4, 0, 0]} 
                       />
                     </BarChart>
                   </ResponsiveContainer>
@@ -417,58 +538,98 @@ export default function StockDetailPage() {
               </CardContent>
             </Card>
 
+            {/* AI-Generated Insights (Grouped with Sentiment) */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Top AI-Generated Insights</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="flex flex-col gap-4">
+                  {(data.aiInsights || []).length > 0 ? (
+                    (data.aiInsights || []).map((item) => {
+                      const Icon =
+                        insightIconMap[
+                          item.type as keyof typeof insightIconMap
+                        ] || Zap;
+                      return (
+                        <li
+                          key={item.id}
+                          className="flex items-start gap-3 text-base"
+                        >
+                          <Icon className="h-5 w-5 flex-shrink-0 text-primary mt-1" />
+                          <span className="text-foreground leading-snug">
+                            {item.insight}
+                          </span>
+                        </li>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No AI insights generated yet.</p>
+                  )}
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* PREMIUM FINANCIALS & TECHNICALS */}
+            <PremiumGate featureName="Technical & Financial Analysis">
+              <TechnicalAnalysis indicators={data.technicalIndicators} />
+              <FinancialScorecard ratios={data.financialRatios} />
+            </PremiumGate>
+
+            {/* KEY STATS (Moved to the bottom) */}
             <Card>
               <CardHeader>
                 <CardTitle>Key Statistics</CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="flex flex-col gap-3">
-                  {Object.entries(data.keyStats).map(([key, value]) => (
-                    <li
-                      key={key}
-                      className="flex justify-between border-b border-dashed border-border/50 pb-2 text-sm"
-                    >
-                      <span className="text-muted-foreground">{key}</span>
-                      <span className="font-medium text-foreground">
-                        {value}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  {Object.entries(data.keyStats || {}).length > 0 ? (
+                    Object.entries(data.keyStats || {}).map(([key, value]) => (
+                      <div
+                        key={key}
+                        className="flex flex-col"
+                      >
+                        <span className="text-sm text-muted-foreground">{key}</span>
+                        <span className="text-lg font-semibold text-foreground">
+                          {value}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="col-span-2 text-sm text-muted-foreground">No key statistics available.</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
-            {/* --- AI-Generated Insights Card --- */}
-            <Card>
-              <CardHeader>
-                <CardTitle>AI-Generated Insights</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="flex flex-col gap-4">
-                  {data.aiInsights.map((item) => {
-                    const Icon =
-                      insightIconMap[
-                        item.type as keyof typeof insightIconMap
-                      ];
-                    return (
-                      <li
-                        key={item.id}
-                        className="flex items-start gap-3 text-sm"
-                      >
-                        <Icon className="h-4 w-4 flex-shrink-0 text-primary" />
-                        <span className="text-muted-foreground">
-                          {item.insight}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </CardContent>
-            </Card>
-            {/* --- End AI Insights --- */}
           </div>
         </div>
       </motion.main>
     </div>
   );
 }
+
+// --- Custom Tooltip Component (Remains the same) ---
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+  isBarChart = false,
+}: TooltipProps<number, string> & { isBarChart?: boolean }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-lg border border-border/50 bg-background/90 p-3 shadow-lg backdrop-blur-sm">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-base font-bold text-primary">
+          {isBarChart
+            ? `Score: ${payload[0].value?.toFixed(2)}`
+            : `$${payload[0].value?.toFixed(2)}`
+          }
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+};
+// --- END Custom Tooltip Component ---

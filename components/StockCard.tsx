@@ -13,7 +13,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { motion } from "framer-motion"; // [cite: 174]
+import { motion } from "framer-motion";
 
 interface StockCardProps {
   ticker: string;
@@ -31,15 +31,20 @@ export default function StockCard({
   sparkline,
 }: StockCardProps) {
   const sentimentColor =
-    sentiment > 0 ? "text-green-500" : "text-red-500";
-  const sparklineColor = sentiment > 0 ? "#22c55e" : "#ef4444";
+    sentiment > 0
+      ? "text-green-500"
+      : sentiment < 0
+      ? "text-red-500"
+      : "text-gray-500"; // Handle neutral sentiment
+  const sparklineColor =
+    sentiment > 0 ? "#22c55e" : sentiment < 0 ? "#ef4444" : "#6b7280"; // Handle neutral
 
   const chartData = sparkline.map((value, index) => ({
     name: index,
     value: value,
   }));
 
-  // Animation props [cite: 175]
+  // Animation props
   const motionProps = {
     initial: { opacity: 0, y: 5 },
     animate: { opacity: 1, y: 0 },
@@ -47,13 +52,14 @@ export default function StockCard({
   };
 
   return (
-    <Card className="transition-all hover:-translate-y-1 hover:shadow-lg">
+    // Added hover effect to match new design
+    <Card className="transition-all hover:-translate-y-1 hover:border-primary/50 hover:shadow-primary/10">
       <Link href={`/stock/${ticker}`}>
         <CardHeader>
           <CardTitle>{ticker}</CardTitle>
           <CardDescription>{name}</CardDescription>
         </CardHeader>
-        <div className="h-20 w-full">
+        <div className="h-20 w-full px-2">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
@@ -82,7 +88,6 @@ export default function StockCard({
           </ResponsiveContainer>
         </div>
         <CardContent className="flex items-baseline justify-between pt-4">
-          {/* [cite: 175] */}
           <motion.span
             className="text-3xl font-semibold"
             {...motionProps}

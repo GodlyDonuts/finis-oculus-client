@@ -1,29 +1,46 @@
+// app/api/validate/[ticker]/route.ts
 import { NextResponse } from 'next/server';
+import YahooFinance from 'yahoo-finance2';
+const yahooFinance = new YahooFinance();
 
-// 1. Change the signature to get the whole 'context' object
-//    We give 'params' a type of 'any' or 'unknown' because it's a Promise,
-//    which is not what the type { ticker: string } expects.
 export async function GET(request: Request, context: { params: any }) {
-  
   try {
-    // 2. Await the 'params' object, as the error message demands
-    const awaitedParams = await context.params;
-
-    // 3. Now, destructure 'ticker' from the resolved object
-    const { ticker } = awaitedParams;
+    // --- THIS IS THE FIX ---
+    const { ticker } = await context.params;
+    // --- END FIX ---
 
     if (!ticker) {
-      return NextResponse.json({ error: 'Ticker symbol is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Ticker symbol is required' },
+        { status: 400 }
+      );
     }
 
-    if (ticker.length > 5 || !/^[A-Z]+$/.test(ticker)) {
-      return NextResponse.json({ error: 'Invalid ticker format' }, { status: 400 });
+    try {
+      const quote: any = await yahooFinance.quote(ticker);
+      if (quote && quote.regularMarketPrice) {
+        return NextResponse.json(
+          { message: `Ticker ${ticker} is valid.` },
+          { status: 200 }
+        );
+      } else {
+        return NextResponse.json(
+          { error: 'Ticker not found or invalid' },
+          { status: 404 }
+        );
+      }
+    } catch (error) {
+      console.error(`Validation failed for ${ticker}:`, error);
+      return NextResponse.json(
+        { error: 'Ticker not found or invalid' },
+        { status: 404 }
+      );
     }
-
-    return NextResponse.json({ message: `Ticker ${ticker} is valid.` }, { status: 200 });
-
   } catch (error) {
-    console.error("Error awaiting params:", error);
-    return NextResponse.json({ error: 'Failed to resolve route parameters' }, { status: 500 });
+    console.error('Error in route params:', error);
+    return NextResponse.json(
+      { error: 'Failed to resolve route parameters' },
+      { status: 500 }
+    );
   }
 }

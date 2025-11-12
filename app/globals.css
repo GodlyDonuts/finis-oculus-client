@@ -1,64 +1,71 @@
 @import "tailwindcss";
 
 :root {
+  /* --- NEW "AURORA" THEME (LIGHT) --- */
   --background: 0 0% 100%;
   --foreground: 240 10% 3.9%;
+  
   --card: 0 0% 100%;
   --card-foreground: 240 10% 3.9%;
+  
   --popover: 0 0% 100%;
   --popover-foreground: 240 10% 3.9%;
   
-  /* --- Finis Oculus Brand Update --- */
-  /* --primary: 240 5.9% 10%; */
-  /* --primary-foreground: 0 0% 98%; */
-  --primary: 142.1 76.2% 36.3%; /* Fintech Green */
-  --primary-foreground: 144 60% 96%;
-  /* --- End Brand Update --- */
+  /* Vibrant Blue Accent */
+  --primary: 217 91% 60%; 
+  --primary-foreground: 210 100% 98%;
 
   --secondary: 240 4.8% 95.9%;
   --secondary-foreground: 240 5.9% 10%;
+  
   --muted: 240 4.8% 95.9%;
   --muted-foreground: 240 3.8% 46.1%;
+  
   --accent: 240 4.8% 95.9%;
   --accent-foreground: 240 5.9% 10%;
+  
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
+  
   --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --ring: 240 10% 3.9%;
+  --input: 240 5.9% 93%; /* Lighter input background */
+  
+  --ring: 217 91% 60%; /* Ring color matches primary */
 
-  /* --- Finis Oculus Brand Update --- */
-  /* --radius: 0.5rem; */
-  --radius: 0.75rem; /* Softer, more modern feel */
-  /* --- End Brand Update --- */
+  --radius: 1rem; /* Softer, more modern "Apple-like" feel */
 }
 
 .dark {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  --card: 240 10% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --popover: 240 10% 3.9%;
-  --popover-foreground: 0 0% 98%;
+  /* --- NEW "AURORA" THEME (DARK) --- */
+  --background: 240 10% 2%; /* Near-black for high contrast */
+  --foreground: 240 5% 95%; /* Soft white */
   
-  /* --- Finis Oculus Brand Update --- */
-  /* --primary: 0 0% 98%; */
-  /* --primary-foreground: 240 5.9% 10%; */
-  --primary: 142.1 70.2% 46.3%; /* Fintech Green (Dark) */
-  --primary-foreground: 144 60% 96%;
-  /* --- End Brand Update --- */
+  --card: 240 8% 10%; /* Distinct card color */
+  --card-foreground: 240 5% 95%;
   
-  --secondary: 240 3.7% 15.9%;
+  --popover: 240 10% 2%;
+  --popover-foreground: 240 5% 95%;
+  
+  /* Vibrant Blue Accent */
+  --primary: 217 91% 60%;
+  --primary-foreground: 210 100% 98%;
+  
+  --secondary: 240 5% 15%;
   --secondary-foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
+  
+  --muted: 240 5% 15%;
   --muted-foreground: 240 5% 64.9%;
-  --accent: 240 3.7% 15.9%;
+  
+  --accent: 240 5% 15%;
   --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
+  
+  --destructive: 0 72.2% 50.6%;
   --destructive-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --ring: 0 0% 98%;
+  
+  --border: 240 5% 15%; /* Dark borders that blend */
+  --input: 240 5% 13%; /* Inputs slightly darker than cards */
+  
+  --ring: 217 91% 60%;
 }
 
 @theme inline {
@@ -69,8 +76,11 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  /* Subtle dot grid pattern for a "designed" feel */
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  background-image: radial-gradient(hsl(var(--foreground) / 0.03) 1px, transparent 1px);
+  background-size: 16px 16px;
 }
 
 /* --- Finis Oculus Additions --- */
@@ -78,6 +88,23 @@ body {
   font-family: var(--font-playfair-display);
 }
 
+/* --- Text Gradient for Hero Titles --- */
+/* FIX: Using native CSS linear-gradient with CSS variables to resolve CssSyntaxError */
+.text-gradient-hero {
+  background-image: linear-gradient(
+    to right,
+    hsl(var(--primary)),
+    hsl(var(--primary) / 0.6)
+  );
+  @apply bg-clip-text text-transparent;
+}
+
+.dark .text-gradient-hero {
+   @apply bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent;
+}
+
+
+/* --- Price Flash Animations --- */
 @keyframes flash-green {
   0% {
     background-color: transparent;
@@ -93,4 +120,35 @@ body {
 .flash-green {
   animation: flash-green 1s ease-out;
 }
-/* --- End Additions --- */
+
+@keyframes flash-red {
+  0% {
+    background-color: transparent;
+  }
+  25% {
+    background-color: hsla(0, 84%, 60%, 0.15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.flash-red {
+  animation: flash-red 1s ease-out;
+}
+
+@keyframes pulse-live {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.9);
+  }
+}
+
+.pulse-live {
+  animation: pulse-live 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

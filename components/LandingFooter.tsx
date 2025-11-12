@@ -4,7 +4,7 @@ import { Github, Twitter, Linkedin } from "lucide-react";
 
 export function LandingFooter() {
   return (
-    <footer className="border-t bg-background/50">
+    <footer className="border-t border-border/50 bg-background/50">
       <div className="container mx-auto grid grid-cols-2 gap-8 px-4 py-16 md:grid-cols-4">
         {/* Column 1: Brand */}
         <div className="col-span-2 flex flex-col gap-4 md:col-span-1">
@@ -77,7 +77,7 @@ export function LandingFooter() {
         </div>
       </div>
       
-      <div className="border-t">
+      <div className="border-t border-border/50">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} Finis Oculus. All rights reserved.

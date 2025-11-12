@@ -10,8 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { toast } from "sonner";
-import { useAuth } from "@/app/context/authcontext";
-import { auth } from "@/app/firebase/config";
+import { useAuth } from "../app/context/authcontext"; // FIX: Adjusted path
+import { auth } from "../app/firebase/config"; // FIX: Adjusted path
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
@@ -31,7 +31,8 @@ export function Header() {
   };
 
   return (
-    <nav className="border-b bg-background">
+    // --- Glassmorphism Header ---
+    <nav className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-sm">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link
           href="/dashboard"

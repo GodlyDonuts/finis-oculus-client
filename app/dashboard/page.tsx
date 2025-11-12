@@ -1,3 +1,4 @@
+// app/dashboard/page.tsx
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/authcontext";
@@ -18,7 +19,14 @@ import { AddStockDialog } from "@/components/AddStockDialog";
 import { toast } from "sonner";
 import { db } from "@/app/firebase/config";
 import { collection, getDocs, doc, deleteDoc } from "firebase/firestore";
-import { X } from "lucide-react";
+import {
+  X,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  LayoutGrid,
+} from "lucide-react"; // --- ADDED ICONS ---
+import { cn } from "@/lib/utils"; // Import cn
 
 const marketOverviewData = [
   {
@@ -26,18 +34,21 @@ const marketOverviewData = [
     value: "5,432.10",
     change: "+0.5%",
     changeType: "positive",
+    icon: TrendingUp, // --- ADDED ---
   },
   {
     name: "NASDAQ",
     value: "17,650.80",
     change: "+1.2%",
     changeType: "positive",
+    icon: TrendingUp, // --- ADDED ---
   },
   {
     name: "DOW 30",
     value: "39,112.50",
     change: "-0.2%",
     changeType: "negative",
+    icon: TrendingDown, // --- ADDED ---
   },
 ];
 
@@ -54,9 +65,10 @@ type Stock = {
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
+  // --- UPDATED: Get 'isPremium' from useAuth ---
+  const { user, loading: authLoading, isPremium } = useAuth();
   const router = useRouter();
-  
+
   // Is the page initializing (e.g., loading user auth)?
   const [isInitializing, setIsInitializing] = useState(true);
   // Is the page actively fetching stock data?
@@ -69,6 +81,8 @@ export default function DashboardPage() {
   const [watchlistData, setWatchlistData] = useState<Stock[]>([]);
 
   const [newTicker, setNewTicker] = useState("");
+  // --- NEW: Loading state for the inline form ---
+  const [isInlineValidating, setIsInlineValidating] = useState(false);
 
   // --- Auth Protection ---
   useEffect(() => {
@@ -82,121 +96,108 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, router]);
 
-  // --- Step 1: Fetch the list of tickers from Firestore ---
-  const fetchTickerList = useCallback(async () => {
+  // --- REFACTOR: Step 1 - Combined Data Fetching Function ---
+  // This one function now handles getting the ticker list AND fetching
+  // all the data for them in a single batch.
+  const fetchWatchlistData = useCallback(async () => {
     if (!user) return;
     setIsFetchingData(true);
+    
     try {
+      // 1. Get the list of tickers from Firestore
       const watchlistCollection = collection(db, "users", user.uid, "watchlist");
       const querySnapshot = await getDocs(watchlistCollection);
-      
-      // We only care about the *document IDs* (the tickers)
       const tickers = querySnapshot.docs.map(doc => doc.id);
-      setTickerList(tickers);
+      
+      setTickerList(tickers); // Still set the raw list for checks (e.g., duplicates)
+
+      // 2. If the user has no tickers, stop here
+      if (tickers.length === 0) {
+        setWatchlistData([]);
+        setIsFetchingData(false);
+        return;
+      }
+
+      // 3. --- NEW BATCH FETCH ---
+      // Get the token once
+      const token = await user.getIdToken();
+      
+      // Call a new batch endpoint (you will need to create this)
+      // This sends all tickers at once and expects an array of data back
+      const res = await fetch(`${API_URL}/get_watchlist_details`, { // Assumed endpoint
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tickers: tickers }), // Send the array of tickers
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch watchlist data");
+      }
+
+      const results = await res.json(); // Expect an array of stock data
+
+      // 4. Format the results (same as before, just on the new 'results' array)
+      const formattedData = results.map((data: any) => ({ // Added 'any' for data
+        ticker: data.ticker,
+        name: data.ticker, // TODO: API doesn'g provide name yet, use ticker
+        price: data.livePrice.c, // 'c' is the 'current price' from Finnhub
+        sentiment: data.sentiment.score,
+        // TODO: API doesn't provide sparkline, so we fake it for now
+        sparkline: Array.from({ length: 7 }, () => (Math.random() * 20) + (data.livePrice.c - 10)),
+      }));
+
+      setWatchlistData(formattedData);
+
     } catch (error) {
-      console.error("Error fetching ticker list: ", error);
-      toast.error("Could not load your watchlist.");
+      console.error("Error fetching watchlist data: ", error);
+      toast.error("Could not load your watchlist data.");
+    } finally {
       setIsFetchingData(false);
     }
   }, [user]);
 
-  // Run Step 1 when the user logs in
+  // --- REFACTOR: Step 2 - Simplified Data Fetching Effect ---
+  // This single effect runs when the user is available,
+  // calling our all-in-one function.
   useEffect(() => {
     if (user) {
-      fetchTickerList();
+      fetchWatchlistData();
     }
-  }, [user, fetchTickerList]);
+  }, [user, fetchWatchlistData]);
 
-  // --- Step 2: Fetch full data from our API whenever the ticker list changes ---
-  useEffect(() => {
-    if (!user || tickerList.length === 0) {
-      setWatchlistData([]); // Clear data if list is empty
-      setIsFetchingData(false);
-      return;
-    }
-
-    const fetchAllStockData = async () => {
-      setIsFetchingData(true);
-      try {
-        const token = await user.getIdToken();
-        
-        // Create an array of fetch promises
-        const promises = tickerList.map(ticker =>
-          fetch(`${API_URL}/get_stock_details/${ticker}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          }).then(res => {
-            if (!res.ok) {
-              // Log the error but don't stop Promise.all
-              console.error(`Failed to fetch ${ticker}`);
-              return null; // Return null for failed fetches
-            }
-            return res.json();
-          })
-        );
-
-        const results = await Promise.all(promises);
-
-        // Filter out any nulls from failed requests
-        const validResults = results.filter(data => data !== null);
-
-        // Map the API response to the 'Stock' type our cards expect
-        const formattedData = validResults.map(data => ({
-          ticker: data.ticker,
-          name: data.ticker, // TODO: API doesn'g provide name yet, use ticker
-          price: data.livePrice.c, // 'c' is the 'current price' from Finnhub
-          sentiment: data.sentiment.score,
-          // TODO: API doesn't provide sparkline, so we fake it for now
-          sparkline: Array.from({ length: 7 }, () => (Math.random() * 20) + (data.livePrice.c - 10)),
-        }));
-
-        setWatchlistData(formattedData);
-
-      } catch (error) {
-        console.error("Error fetching stock details: ", error);
-        toast.error("Error fetching stock data. Please refresh.");
-      } finally {
-        setIsFetchingData(false);
-      }
-    };
-
-    fetchAllStockData();
-  }, [tickerList, user]); // Re-run this entire effect if the ticker list changes
-
-  // --- Step 3: Handle Adding a Stock (Calls our API) ---
+  // --- Step 3: Handle Adding a Stock (This is now JUST the API call) ---
+  // --- UPDATED: Added Premium Limit Check ---
   const handleAddStock = async (ticker: string) => {
     if (!user) return;
-    ticker = ticker.toUpperCase();
+    
+    // --- THIS IS THE NEW PREMIUM LIMIT CHECK ---
+    const currentCount = tickerList.length;
+    if (!isPremium && currentCount >= 15) {
+      // --- UPDATED TOAST MESSAGE ---
+      toast.error("Free Plan Limit Reached", {
+        description: "Please delete an existing stock or upgrade to Premium to add more."
+      });
+      return; // Stop the function here
+      // --- END UPDATED TOAST MESSAGE ---
+    }
+    // --- END NEW CHECK ---
+
+    // Ticker is already uppercased
     if (tickerList.includes(ticker)) {
       toast.error(`${ticker} is already in your watchlist.`);
       return;
     }
 
-    // Start a multi-step toast
-    const toastId = toast.loading(`Verifying ${ticker}...`);
+    // Start a toast just for the "adding" step.
+    const toastId = toast.loading(`Adding ${ticker} to watchlist...`);
     
     try {
       const token = await user.getIdToken();
 
-      // --- NEW VALIDATION STEP ---
-      // We first try to GET the stock details.
-      // This acts as our validation. If this fails, the ticker is invalid.
-      const validateRes = await fetch(`${API_URL}/get_stock_details/${ticker}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!validateRes.ok) {
-        // Finnhub (via our backend) couldn't find the ticker.
-        throw new Error(`Ticker ${ticker} not found or is invalid.`);
-      }
-      // --- END VALIDATION STEP ---
-
-      // If validation passed, update toast and add to watchlist
-      toast.loading(`Adding ${ticker} to watchlist...`, { id: toastId });
-
+      // --- Go straight to the "add" call ---
       const res = await fetch(`${API_URL}/add_to_watchlist/${ticker}`, {
         method: 'POST',
         headers: {
@@ -208,14 +209,13 @@ export default function DashboardPage() {
         throw new Error("Failed to add stock");
       }
       
-      // Success!
       toast.success(`${ticker} added to watchlist!`, { id: toastId });
-      // Optimistically update the ticker list to trigger our data-fetching effect
-      setTickerList((prevTickers) => [...prevTickers, ticker]);
+      
+      // Refresh all data to ensure perfect consistency
+      fetchWatchlistData();
 
     } catch (error: any) { //
       console.error("Error adding stock: ", error);
-      // This will now show "Ticker NVDI not found..."
       toast.error(error.message || `Failed to add ${ticker}.`, { id: toastId });
     }
   };
@@ -241,14 +241,13 @@ export default function DashboardPage() {
       }
 
       // Also delete from the user's "watchlist" collection in Firestore
-      // (This is the only direct FS call we still make)
       const stockDocRef = doc(db, "users", user.uid, "watchlist", ticker);
       await deleteDoc(stockDocRef);
 
-      // Success!
+      // --- REFACTOR: Step 5 - Refresh all data on success ---
       toast.success(`${ticker} removed from watchlist.`, { id: toastId });
-      // Update the ticker list to trigger data re-fetch
-      setTickerList((prevTickers) => prevTickers.filter(t => t !== ticker));
+      // Re-fetch all data to ensure perfect consistency.
+      fetchWatchlistData();
 
     } catch (error) {
       console.error("Error removing stock: ", error);
@@ -256,11 +255,41 @@ export default function DashboardPage() {
     }
   };
 
-  // --- Inline Form Handler (No Change) ---
-  const handleInlineAdd = (e: React.FormEvent) => {
+  // --- UPDATED: Inline Form Handler (Now validates) ---
+  const handleInlineAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    handleAddStock(newTicker);
-    setNewTicker("");
+    if (!newTicker.trim()) {
+      toast.error("Please enter a ticker.");
+      return;
+    }
+
+    const upperTicker = newTicker.toUpperCase();
+    setIsInlineValidating(true);
+    const validationToastId = toast.loading(`Validating ${upperTicker}...`);
+
+    try {
+      // 1. Call validation route
+      const response = await fetch(`/api/validate/${upperTicker}`);
+
+      if (!response.ok) {
+        // Ticker is invalid
+        const data = await response.json();
+        toast.error(data.error || `Invalid ticker: ${upperTicker}`, { id: validationToastId });
+        return;
+      }
+
+      // 2. If valid, dismiss toast and call the *real* add function
+      toast.dismiss(validationToastId);
+      await handleAddStock(upperTicker); // This already shows its own toasts
+      setNewTicker(""); // Clear input on success
+
+    } catch (error) {
+      // For network errors, etc.
+      toast.error("Validation failed. Please try again.", { id: validationToastId });
+      console.error("Validation error:", error);
+    } finally {
+      setIsInlineValidating(false);
+    }
   };
 
   // --- RENDER LOGIC ---
@@ -301,16 +330,21 @@ export default function DashboardPage() {
                 index.changeType === "positive"
                   ? "text-green-500"
                   : "text-red-500";
+              const Icon = index.icon; // --- ADDED ---
               return (
-                <Card key={index.name}>
+                <Card key={index.name} className="hover:border-primary/50">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base font-medium">
                       {index.name}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-semibold">{index.value}</p>
-                    <p className={`text-sm font-medium ${color}`}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-2xl font-semibold">{index.value}</p>
+                      {/* --- ADDED ICON --- */}
+                      <Icon className={cn("h-6 w-6", color)} />
+                    </div>
+                    <p className={cn("text-sm font-medium", color)}>
                       {index.change}
                     </p>
                   </CardContent>
@@ -320,13 +354,17 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <header className="mb-8 flex items-center justify-between">
+        <header className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           <div>
             <h2 className="font-serif-display text-4xl font-semibold text-foreground">
               Your Watchlist
             </h2>
+            <p className="mt-1 text-lg text-muted-foreground">
+              Your personal AI-powered market dashboard.
+            </p>
           </div>
           {!isFetchingData && (
+            // Pass the REAL add function to the dialog
             <AddStockDialog onStockAdded={handleAddStock} />
           )}
         </header>
@@ -353,7 +391,7 @@ export default function DashboardPage() {
                 <Button
                   variant="destructive"
                   size="icon-sm"
-                  className="absolute top-2 right-2 z-10 opacity-0 transition-opacity group-hover:opacity-100"
+                  className="absolute top-4 right-4 z-10 opacity-0 transition-opacity group-hover:opacity-100"
                   onClick={() => handleRemoveStock(stock.ticker)}
                 >
                   <X className="h-4 w-4" />
@@ -363,13 +401,18 @@ export default function DashboardPage() {
           </div>
         ) : (
           // Empty State
-          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-200 p-12 dark:border-zinc-800">
-            <h2 className="text-2xl font-medium text-foreground">
-              Your watchlist is empty.
+          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/50 p-12">
+            {/* --- ADDED ICON --- */}
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-input">
+              <LayoutGrid className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h2 className="mt-6 text-2xl font-medium text-foreground">
+              Your watchlist is empty
             </h2>
             <p className="mt-2 text-muted-foreground">
               Add stocks to your watchlist to start tracking them.
             </p>
+            {/* --- UPDATED FORM --- */}
             <form
               onSubmit={handleInlineAdd}
               className="mt-6 flex w-full max-w-sm items-center space-x-2"
@@ -377,10 +420,15 @@ export default function DashboardPage() {
               <Input
                 placeholder="Enter ticker (e.g., AAPL)"
                 value={newTicker}
-                onChange={(e) => setNewTicker(e.target.value)}
+                onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
+                className="h-12 flex-1" // Taller input
+                disabled={isInlineValidating} // Disable while validating
               />
-              <Button type="submit">Add Stock</Button>
+              <Button type="submit" size="lg" disabled={isInlineValidating}>
+                {isInlineValidating ? "Checking..." : "Add Stock"}
+              </Button>
             </form>
+            {/* --- END UPDATED FORM --- */}
           </div>
         )}
       </motion.main>

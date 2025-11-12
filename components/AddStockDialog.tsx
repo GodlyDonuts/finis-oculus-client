@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Plus } from "lucide-react"; // Import Plus icon
 
 interface AddStockDialogProps {
   onStockAdded: (ticker: string) => void;
@@ -68,7 +69,10 @@ export function AddStockDialog({ onStockAdded }: AddStockDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Add Stock</Button>
+        <Button size="lg">
+          <Plus className="-ml-1 h-5 w-5" />
+          Add Stock
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -91,7 +95,7 @@ export function AddStockDialog({ onStockAdded }: AddStockDialogProps) {
             <Input
               id="ticker"
               value={ticker}
-              onChange={(e) => setTicker(e.target.value)}
+              onChange={(e) => setTicker(e.target.value.toUpperCase())} // Auto-uppercase
               className="col-span-3"
               placeholder="AAPL"
               disabled={isValidating} // Disable input while validating
@@ -100,7 +104,7 @@ export function AddStockDialog({ onStockAdded }: AddStockDialogProps) {
         </form>
         <DialogFooter>
           {/* --- Button handler is updated --- */}
-          <Button onClick={handleValidateAndAdd} type="submit" disabled={isValidating}>
+          <Button onClick={handleValidateAndAdd} type="submit" disabled={isValidating} className="w-full sm:w-auto">
             {isValidating ? "Validating..." : "Add Stock"}
           </Button>
         </DialogFooter>

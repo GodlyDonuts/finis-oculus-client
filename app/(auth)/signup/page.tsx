@@ -1,3 +1,5 @@
+// app/(auth)/signup/page.tsx
+
 "use client";
 import { useState } from "react";
 import Link from "next/link";
@@ -16,12 +18,18 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { auth } from "@/app/firebase/config";
-// Import Google auth providers
+// --- UPDATED IMPORTS ---
 import {
-  createUserWithEmailAndPassword,
+  createUserWithEmailAndPassword, // Changed from signIn
   signInWithPopup,
   GoogleAuthProvider,
 } from "firebase/auth";
+// Import Firestore db and functions
+import { db } from "@/app/firebase/config";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+// --- END IMPORTS ---
+import { HeroVisual } from "@/components/HeroVisual"; // Import the new visual
+import { GoogleIcon } from "@/components/GoogleIcon"; // Import the new icon
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -30,28 +38,68 @@ export default function SignupPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false); //
   const router = useRouter();
 
+  // --- UPDATED: Email Signup Handler ---
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      toast.success("Account created successfully! Welcome.");
+      // 1. Create the user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+
+      // 2. Create the user document in Firestore
+      const userDocRef = doc(db, "users", user.uid);
+      await setDoc(userDocRef, {
+        email: user.email,
+        isPremium: false,
+        // Add any other default fields here
+      });
+
+      toast.success("Account created! Redirecting to dashboard.");
       router.push("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Failed to create account. Please try again.");
+      // Provide better error messages
+      if (error.code === "auth/email-already-in-use") {
+        toast.error("This email is already in use. Please log in.");
+      } else {
+        toast.error("Failed to create account. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- New Google Sign-In Handler ---
+  // --- UPDATED: Google Sign-In Handler ---
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      toast.success("Account created successfully! Welcome.");
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // --- NEW: Check if user doc already exists ---
+      const userDocRef = doc(db, "users", user.uid);
+      const docSnap = await getDoc(userDocRef);
+
+      if (!docSnap.exists()) {
+        // This is a new user, create their document
+        await setDoc(userDocRef, {
+          email: user.email,
+          isPremium: false,
+          // Add any other default fields here
+        });
+        toast.success("Account created! Redirecting to dashboard.");
+      } else {
+        // This is a returning user, just log them in
+        toast.success("Welcome back!");
+      }
+      // --- END NEW CHECK ---
+
       router.push("/dashboard");
     } catch (error) {
       console.error(error);
@@ -65,27 +113,39 @@ export default function SignupPage() {
   return (
     <div className="flex min-h-screen w-full bg-background">
       {/* Left Column: Form */}
-      <div className="flex w-full items-center justify-center p-8 md:w-1/2">
+      <div className="flex w-full items-center justify-center p-8 md:w-1/2 lg:w-2/5">
         <Card className="w-full max-w-sm">
+          {/* Use the new handleSignup handler */}
           <form onSubmit={handleSignup}>
-            <CardHeader>
+            <CardHeader className="text-center">
+              <div className="mb-4 flex justify-center md:hidden">
+                <Image
+                  src="/logo.svg"
+                  alt="Finis Oculus Logo"
+                  width={48}
+                  height={48}
+                  className="dark:invert"
+                />
+              </div>
               <CardTitle className="font-serif-display text-3xl">
                 Create Account
               </CardTitle>
               <CardDescription>
-                Enter your email and password to get started.
+                Enter your email below to create your AI-powered account.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
-              {/* --- New Google Button --- */}
+              {/* --- Google Button --- */}
               <Button
                 variant="outline"
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={isLoading || isGoogleLoading}
               >
-                {/* You can add a Google icon here */}
-                {isGoogleLoading ? "Signing up..." : "Sign up with Google"}
+                <GoogleIcon className="mr-2 h-5 w-5" />
+                {isGoogleLoading
+                  ? "Signing up..."
+                  : "Sign up with Google"}
               </Button>
               {/* --- Separator --- */}
               <div className="relative">
@@ -94,12 +154,12 @@ export default function SignupPage() {
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-background px-2 text-muted-foreground">
-                    Or continue with
+                    Or continue with email
                   </span>
                 </div>
               </div>
-              {/* --- End New Additions --- */}
-
+              {/* --- End Additions --- */}
+              
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -128,15 +188,16 @@ export default function SignupPage() {
               <Button
                 type="submit"
                 className="w-full"
+                size="lg"
                 disabled={isLoading || isGoogleLoading}
               >
-                {isLoading ? "Creating Account..." : "Sign Up"}
+                {isLoading ? "Creating account..." : "Sign Up"}
               </Button>
               <p className="mt-4 text-center text-sm text-muted-foreground">
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                  className="font-medium text-foreground underline-offset-4 hover:underline"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
                 >
                   Login
                 </Link>
@@ -147,8 +208,14 @@ export default function SignupPage() {
       </div>
 
       {/* Right Column: Branded Element */}
-      <div className="hidden items-center justify-center bg-muted p-12 md:flex md:w-1/2">
-        <div className="flex flex-col items-center text-center">
+      <div className="relative hidden items-center justify-center overflow-hidden p-12 md:flex md:w-1/2 lg:w-3/5">
+        {/* The new HeroVisual as a background */}
+        <div className="absolute inset-0 z-0">
+          <HeroVisual />
+        </div>
+        
+        {/* Content on top */}
+        <div className="relative z-10 flex flex-col items-center text-center">
           <Image
             src="/logo.svg"
             alt="Finis Oculus Logo"
@@ -156,10 +223,10 @@ export default function SignupPage() {
             height={64}
             className="dark:invert"
           />
-          <span className="font-serif-display mt-4 text-4xl font-semibold text-foreground">
+          <span className="font-serif-display mt-4 text-4xl font-semibold text-white shadow-black/50 [text-shadow:_0_2px_4px_var(--tw-shadow-color)]">
             Finis Oculus
           </span>
-          <p className="mt-4 text-lg text-muted-foreground">
+          <p className="mt-4 max-w-sm text-lg text-gray-200 shadow-black/50 [text-shadow:_0_1px_2px_var(--tw-shadow-color)]">
             Clarity in the chaos of market sentiment.
           </p>
         </div>

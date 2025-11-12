@@ -1,102 +1,131 @@
-# `Finis Oculus`
+# Finis Oculus - Front End (Next.js Client)
 
-An AI-powered web application for analyzing market sentiment from news articles, social media, and financial reports.
+This document provides a comprehensive technical breakdown of the Finis Oculus front-end application. This application is a Next.js 14 client built with the App Router, TypeScript, and Tailwind CSS.
 
-## 🚀 The Core Idea
+## 1. Core Concept & System Architecture
 
-The stock market is driven by more than just numbers; it's driven by human emotion. This project aims to capture and quantify that emotion.
+This front-end application is the primary user interface for the Finis Oculus system. It does **not** perform any AI analysis itself. Its role is to:
 
-Instead of just looking at price charts, this app scrapes and aggregates thousands of real-time data points (news headlines, social media posts) and uses a fin-tech-trained AI language model (`FinBERT`) to analyze the underlying sentiment.
+1.  **Authenticate users** via the Firebase client-side SDK.
+2.  **Display public-facing pages** (e.g., landing page).
+3.  **Provide a protected dashboard** for logged-in users to manage their stock watchlist.
+4.  **Fetch and display data** by making requests to a separate, proprietary backend (the "Core API").
+5.  **Read and write directly to Firestore** for managing the user's *list* of watched tickers.
 
-The result is a dashboard that gives you a unique, data-driven "vibe check" on your favorite stocks, helping you spot trends before they're obvious.
+This application relies on a separate backend (defined in the `README.md`) for all heavy data processing, which in turn gets its AI sentiment data from a scheduled "Brain" pipeline.
 
-## ✨ Key Features (MVP)
+## 2. Technology Stack
 
-* **User Authentication:** Secure sign-up and login (e.g., using Firebase Auth).
-* **Custom Watchlist:** Users can add and remove stocks from a personal, saved watchlist.
-* **Main Dashboard:** A high-level overview of the user's watchlist, showing the current price and the calculated AI sentiment score for each stock.
-* **Detailed Stock Page:** A dedicated page for each stock that includes:
-    * An interactive price chart (e.g., using `Recharts`).
-    * The real-time AI sentiment score (e.g., "+0.82, Strongly Positive").
-    * A feed of the most recent news headlines and social media posts used in the analysis.
-* **Automated Data Pipeline:** A back-end process that runs on a schedule (e.g., every 30 minutes) to continuously fetch, analyze, and store new sentiment data.
+| Category | Technology | Files / Rationale |
+| :--- | :--- | :--- |
+| **Framework** | Next.js 14 (App Router) | |
+| **Language** | TypeScript | |
+| **Authentication** | Firebase Authentication | |
+| **Database (Client)** | Firebase Firestore | (Used for reading/writing the user's ticker list). |
+| **UI Components** | `shadcn/ui` | |
+| **Styling** | Tailwind CSS | |
+| **State Management**| React Context (for Auth) | (All other state is local component state). |
+| **Animations** | Framer Motion | |
+| **Charting** | Recharts |/page.tsx] |
+| **Notifications** | Sonner (Toasts) | |
 
-## 🛠️ Technology Stack
+## 3. Project Structure (App Router)
 
-This is a full-stack application built with a modern, scalable architecture.
+The project uses a standard Next.js App Router layout.
 
-* **Front-End:** **Next.js** (with Next.js Hooks & Context API), **CSS/Tailwind CSS**, **Recharts** (for charts).
-* **Back-End:** **Python (FastAPI)** for a high-performance REST API.
-* **Database:** **Google Firebase** (Firestore for NoSQL data, Firebase Auth for users).
-* **AI / NLP:** **FinBERT** (via the `transformers` library) for financial sentiment analysis.
-* **Data Scraping:** **Python** (`BeautifulSoup`, `requests`).
-* **Deployment:** **Vercel** (for Front-End), **Render / Google Cloud Run** (for Back-End API).
+* `app/`
+    * `layout.tsx`: Root layout. Imports global styles, fonts (`Geist`, `Playfair_Display`), and wraps all pages in `ThemeProvider` and `AuthProvider`.
+    * `page.tsx`: The public, marketing landing page.
+    * `globals.css`: Global stylesheet, including Tailwind imports and CSS variables for light/dark themes.
+    * `favicon.ico`: Application favicon.
+    * `(auth)/`: **Route Group** for authentication pages.
+        * `login/page.tsx`: User login form.
+        * `signup/page.tsx`: User signup form.
+    * `dashboard/`: **Protected Route**.
+        * `page.tsx`: The main user dashboard, displaying the stock watchlist.
+    * `stock/[ticker]/`: **Dynamic Route**.
+        * `page.tsx`: Page for displaying detailed info about a single stock/page.tsx].
+    * `api/`: **Next.js API Routes** (Serverless Functions).
+        * `validate/[ticker]/route.ts`: A backend-for-frontend endpoint used to validate ticker symbols/route.ts, components/AddStockDialog.tsx].
+    * `context/`:
+        * `authcontext.tsx`: Global React Context for authentication.
+    * `firebase/`:
+        * `config.ts`: Firebase client SDK initialization.
+* `components/`
+    * `ui/`: Base UI primitives from `shadcn/ui` (e.g., `button.tsx`, `card.tsx`).
+    * `*.tsx`: Custom, application-specific components (e.g., `Header.tsx`, `StockCard.tsx`).
 
----
+## 4. Core Features & Data Flow
 
-## 🗺️ Project Roadmap & Steps to MVP
+This section details the step-by-step logic for the application's primary functions.
 
-This is the development plan to build the project from the ground up.
+### 4.1. Authentication Flow
 
-### Phase 0: Setup & Foundations
-1.  **Initialize Repos:** Create two repositories on GitHub (e.g., `finis-oculus-client` and `finis-oculus-api`).
-2.  **Firebase Project:** Create a new project in the Firebase console. Enable **Firestore** and **Authentication** (Email/Password & Google).
-3.  **Bootstrap Apps:**
-    * Front-End: `npx create-Next.js-app finis-oculus-client`
-    * Back-End: Set up a Python virtual environment (`venv`) and install `fastapi`, `uvicorn`, `transformers`, `torch`, `beautifulsoup4`, `requests`, `firebase-admin`.
+1.  **Provider:** The `app/layout.tsx` file wraps the entire application in `AuthProvider`.
+2.  **State:** `AuthProvider` uses the Firebase `onAuthStateChanged` listener to maintain the global `user` and `loading` state.
+3.  **Login/Signup:**
+    * The pages at `app/(auth)/login/page.tsx` and `app/(auth)/signup/page.tsx` are simple forms.
+    * They call Firebase Auth functions directly (e.g., `signInWithEmailAndPassword`, `createUserWithEmailAndPassword`, `signInWithPopup` for Google).
+    * Upon success, Firebase's `onAuthStateChanged` listener in `AuthProvider` automatically updates the global state, and the user is redirected to `/dashboard` via `useRouter`.
+4.  **Route Protection:**
+    * The `app/dashboard/page.tsx` file uses the `useAuth` hook.
+    * A `useEffect` hook checks if `authLoading` is false and `user` is null. If so, it redirects to `/login`.
+5.  **UI State:** The `components/Header.tsx` component also uses `useAuth` to conditionally render the user's avatar or a "Login" button.
 
-### Phase 1: The "Brain" (AI Data Pipeline)
-*Goal: Get sentiment scores into our database.*
+### 4.2. Dashboard & Watchlist (Data Fetching)
 
-1.  **Develop Scraper:** Write a Python script (`scraper.py`) that can take a stock ticker (e.g., "AAPL") and scrape 10-20 recent news headlines from sources like Finviz, MarketWatch, or a news API.
-2.  **Integrate FinBERT:** Write a separate script (`analysis.py`) that loads the `FinBERT` model. Write a function that takes a list of headlines and returns an average sentiment score (e.g., `+0.75`).
-3.  **Combine & Store:** Combine the scripts. The main function should:
-    * Scrape headlines for "AAPL".
-    * Feed headlines into `FinBERT` to get a score.
-    * Use the `firebase-admin` SDK to write this score to Firestore: `db.collection('sentiment').document('AAPL').set({'score': 0.75, 'lastUpdated': ...})`
-4.  **Automate:** Set this script up to run on a schedule (e.g., as a Google Cloud Function, a PythonAnywhere task, or a cron job on your deployment platform). **This is key**—the analysis should not happen live when a user clicks; it should be pre-calculated.
+This is the most complex client-side workflow, located in `app/dashboard/page.tsx`.
 
-### Phase 2: The Core API (Back-End)
-*Goal: Create an API that our front-end can talk to.*
+1.  **Initial Load:** The page renders, showing `StockCardSkeleton` components while `isFetchingData` is true.
+2.  **`fetchWatchlistData` Called:** A `useEffect` hook calls this function once the `user` is available.
+3.  **Step 1: Get Ticker List (Client -> Firestore):**
+    * The function makes a **direct call to Firestore** from the client.
+    * It queries `collection(db, "users", user.uid, "watchlist")` to get a list of document IDs (which are the tickers).
+4.  **Step 2: Get Batch Data (Client -> Backend API):**
+    * If the ticker list is not empty, the function makes a **single `fetch` POST request** to the "Core API" backend (`${API_URL}/get_watchlist_details`).
+    * The body of this request is a JSON object: `{ "tickers": ["AAPL", "MSFT", ...] }`.
+    * The backend returns a single array of objects, each containing price and sentiment data.
+5.  **Step 3: Set State:**
+    * The returned array is saved to the `watchlistData` state.
+    * React re-renders, mapping this array to `StockCard` components.
 
-1.  **Build with FastAPI:** Create your main `main.py`.
-2.  **`/get_stock_details/{ticker}` Endpoint:** Create this endpoint. When called, it should do two things:
-    1.  Call a stock price API (e.g., Alpha Vantage, Finnhub) to get the *live price data*.
-    2.  Read the *sentiment score* from your Firestore database (e.g., `db.collection('sentiment').document(ticker).get()`).
-    3.  Return all this data as a single JSON response.
-3.  **Watchlist Endpoints (Protected):**
-    * `/get_watchlist`
-    * `/add_to_watchlist/{ticker}`
-    * `/remove_from_watchlist/{ticker}`
-    * (These will require a user authentication token to work).
+### 4.3. Adding a Stock (Complex Flow)
 
-### Phase 3: The "Face" (Front-End Next.js App)
-*Goal: Create the user-facing website.*
+1.  **Trigger:** User clicks the "Add Stock" button, opening the `AddStockDialog` component.
+2.  **Step 1: Validation (Dialog -> Next.js API):**
+    * The user types a ticker (e.g., "AAPL") and submits.
+    * `AddStockDialog` *first* calls its **own validation route** at `fetch('/api/validate/${upperTicker}')`.
+    * This hits the Next.js serverless function at `app/api/validate/[ticker]/route.ts`, which performs basic format checks (e.g., length, characters)/route.ts].
+3.  **Step 2: Add to Backend (Dashboard -> Backend API):**
+    * If validation passes, the dialog's `onStockAdded` prop is called. This executes `handleAddStock` in `app/dashboard/page.tsx`.
+    * `handleAddStock` performs a `fetch` **POST** request to the "Core API" at `${API_URL}/add_to_watchlist/${ticker}`. This request includes the user's auth token in the header.
+4.  **Step 3: Refresh Data:**
+    * Upon a successful response from the backend, `handleAddStock` calls `fetchWatchlistData()` again to get the new, complete state of the watchlist.
 
-1.  **Set up Next.js Router:** Create routes for `/`, `/login`, `/signup`, `/dashboard`, and `/stock/{ticker}`.
-2.  **Implement Auth:** Use the `firebase` JS SDK to create the `LoginPage` and `SignupPage`. Use Next.js Context to manage the user's login state globally.
-3.  **Build Dashboard:** Create the `Dashboard` component.
-    * It should fetch the user's watchlist from Firestore.
-    * For each stock in the watchlist, it should call your FastAPI `/get_stock_details/{ticker}` endpoint.
-    * Display the results in a clean list or grid.
-4.  **Build Detail Page:** Create the `StockDetailPage` component.
-    * It should get the ticker from the URL (`useParams`).
-    * Call `/get_stock_details/{ticker}`.
-    * Display the price, sentiment, and a chart using `Recharts`.
-5.  **Styling:** Apply CSS or Tailwind to make it look professional, clean, and "ChatGPT-like."
+### 4.4. Removing a Stock
 
-### Phase 4: Deployment
-*Goal: Put your project on the internet.*
+1.  **Trigger:** User clicks the "X" icon on a `StockCard` component.
+2.  **Step 1: Delete from Backend (Dashboard -> Backend API):**
+    * The `handleRemoveStock` function is called with the ticker.
+    * It performs a `fetch` **DELETE** request to `${API_URL}/remove_from_watchlist/${ticker}` (with auth token).
+3.  **Step 2: Delete from Firestore (Client -> Firestore):**
+    * `handleRemoveStock` also makes a **direct client-side call** to `deleteDoc` to remove the ticker from the user's `watchlist` subcollection in Firestore.
+4.  **Step 3: Refresh Data:**
+    * Upon success, `handleRemoveStock` calls `fetchWatchlistData()` to refresh the UI.
 
-1.  **Deploy Back-End:** Deploy your FastAPI application to **Render** or **Google Cloud Run**.
-2.  **Deploy Front-End:** Deploy your Next.js app to **Vercel** or **Netlify**.
-3.  **Configure CORS:** Ensure your back-end API allows requests from your front-end's Vercel URL.
-4.  **Set Env Variables:** Add all your API keys (Firebase, Stock API) as secret environment variables on your deployment platforms.
+### 4.5. Stock Detail Page (Mock Data)
 
-## 📈 Future Features (Beyond MVP)
+The `app/stock/[ticker]/page.tsx` component is currently a **standalone mock**.
 
-* **Discord Bot Integration:** Use the architecture you designed! The Discord bot acts as a *second client* that just calls your existing FastAPI back-end.
-* **Broader Data Sources:** Integrate Reddit (r/wallstreetbets, r/stocks) and X (Twitter) via their APIs for a much richer sentiment analysis.
-* **Historical Sentiment:** Track and chart sentiment over time, and plot it against the stock price chart to see correlations.
-* **Sector-Wide Analysis:** Show an aggregate sentiment score for "Tech" or "Healthcare."
-* **"GPT Wrapper" Summaries:** Use a fine-tuned LLM to provide a human-readable summary: "Sentiment for $AAPL is strongly positive, driven by 5 articles about the new product launch..."
+* It uses `"use client"` and `useParams` to get the ticker from the URL/page.tsx].
+* It does **not** fetch any data from the backend.
+* A `useEffect` hook with `setTimeout` simulates a 1-second load before setting the `stockData` state from a hard-coded `mockStockDetails` object/page.tsx].
+* A second `useEffect` with `setInterval` simulates live price updates by modifying the state every 3 seconds/page.tsx].
+* It renders charts using `Recharts` and a skeleton component (`StockDetailPageSkeleton`) during the initial 1-second "load"/page.tsx, components/StockDetailPageSkeleton.tsx].
+
+## 5. Key Component Breakdown
+
+* `components/Header.tsx`: The primary navigation bar for authenticated users. It contains the logo, `ThemeToggle` component, and a user avatar dropdown for logging out.
+* `components/LandingNavbar.tsx` / `components/LandingFooter.tsx`: These are for the public-facing landing page (`app/page.tsx`) and contain navigation links and "Login/Get Started" buttons.
+* `components/StockCard.tsx`: A core component used on the dashboard. It displays a stock's ticker, name, price, and sentiment. It also renders a small `Recharts` `LineChart` as a sparkline.
+* `components/ThemeToggle.tsx`: A `shadcn/ui` `DropdownMenu` that uses the `next-themes` package to set the theme ('light', 'dark', 'system'). This theme is applied in the root `layout.tsx`.
