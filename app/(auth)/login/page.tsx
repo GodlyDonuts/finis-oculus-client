@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { auth } from "@/app/firebase/config";
+import { auth } from "@/firebase/config";
 // Import Google auth providers
 import {
   signInWithEmailAndPassword,

@@ -1,7 +1,7 @@
 // app/dashboard/page.tsx
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "../context/authcontext";
+import { useAuth } from "@/context/authcontext";
 import { Header } from "@/components/Header";
 import StockCard from "@/components/StockCard";
 import { StockCardSkeleton } from "@/components/StockCardSkeleton";
@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { AddStockDialog } from "@/components/AddStockDialog";
 import { toast } from "sonner";
-import { db } from "@/app/firebase/config";
+import { db } from "@/firebase/config";
 import { collection, getDocs, doc, deleteDoc } from "firebase/firestore";
 import {
   X,

@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
 // --- UPDATED IMPORT ---
 // Use the new admin config, NOT the client config
-import { db } from '@/app/firebase/admin';
+import { db } from '@/firebase/admin';
 // --- END UPDATED IMPORT ---
 
 const yahooFinance = new YahooFinance();

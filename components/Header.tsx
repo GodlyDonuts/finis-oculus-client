@@ -10,8 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { toast } from "sonner";
-import { useAuth } from "../app/context/authcontext"; // FIX: Adjusted path
-import { auth } from "../app/firebase/config"; // FIX: Adjusted path
+import { useAuth } from "@/context/authcontext"; // FIX: Adjusted path
+import { auth } from "@/firebase/config"; // FIX: Adjusted path
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 

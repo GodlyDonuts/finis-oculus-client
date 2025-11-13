@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Card } from "./ui/card"; // Import Card
 // --- NEW ---
 // Import the useAuth hook to get the real premium status
-import { useAuth } from "@/app/context/authcontext";
+import { useAuth } from "@/context/authcontext";
 
 // --- UPDATED ---
 // The 'isPremium' prop is no longer needed, as we get it from the context.

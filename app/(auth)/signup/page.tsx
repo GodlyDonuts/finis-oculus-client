@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { auth } from "@/app/firebase/config";
+import { auth } from "@/firebase/config";
 // --- UPDATED IMPORTS ---
 import {
   createUserWithEmailAndPassword, // Changed from signIn
@@ -25,7 +25,7 @@ import {
   GoogleAuthProvider,
 } from "firebase/auth";
 // Import Firestore db and functions
-import { db } from "@/app/firebase/config";
+import { db } from "@/firebase/config";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 // --- END IMPORTS ---
 import { HeroVisual } from "@/components/HeroVisual"; // Import the new visual

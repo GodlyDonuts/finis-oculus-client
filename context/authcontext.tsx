@@ -4,11 +4,11 @@
 
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 // Import the real auth instance
-import { auth } from '@/app/firebase/config';
+import { auth } from '@/firebase/config';
 import { User, onAuthStateChanged } from 'firebase/auth';
 // --- NEW ---
 // Import Firestore database and functions
-import { db } from '@/app/firebase/config';
+import { db } from '@/firebase/config';
 import { doc, getDoc } from 'firebase/firestore';
 
 // --- NEW ---

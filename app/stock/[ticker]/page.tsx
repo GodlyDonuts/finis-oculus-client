@@ -3,7 +3,7 @@
 "use client";
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { useAuth } from "@/app/context/authcontext";
+import { useAuth } from "@/context/authcontext";
 import { toast } from "sonner";
 import {
   Card,
