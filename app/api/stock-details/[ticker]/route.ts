@@ -200,7 +200,7 @@ export async function GET(
       aiSummary: aiSummary,
       sentiment: {
         score: sentimentScore, 
-        label: sentimentLabel, 
+        label: sentimentLabel,
         history: priceHistory.map((p) => ({
           name: p.name,
           score: Math.random() * 0.5 + 0.3, 
