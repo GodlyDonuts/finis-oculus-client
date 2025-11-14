@@ -11,7 +11,7 @@ const sectionVariants = {
     y: 0,
     transition: { duration: 0.7, type: "spring", staggerChildren: 0.1 },
   },
-};
+} as const;
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
