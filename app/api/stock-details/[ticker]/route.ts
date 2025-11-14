@@ -1,11 +1,11 @@
 // app/api/stock-details/[ticker]/route.ts
 
-import { NextResponse } from 'next/server';
+// --- FIX: Import 'NextRequest' instead of just 'NextResponse' ---
+import { NextResponse, NextRequest } from 'next/server';
+// --- END FIX ---
+
 import YahooFinance from 'yahoo-finance2';
-// --- UPDATED IMPORT ---
-// Use the new admin config, NOT the client config
 import { db } from '@/firebase/admin';
-// --- END UPDATED IMPORT ---
 
 const yahooFinance = new YahooFinance();
 
@@ -21,7 +21,6 @@ function getSentimentLabel(score: number): string {
 type RatioRating = 'Strong' | 'Neutral' | 'Weak';
 type TechnicalSignal = 'Buy' | 'Hold' | 'Sell' | 'N/A';
 
-// --- FIX: Defined types for 'any[]' properties ---
 type NewsItem = {
   id: string;
   headline: string;
@@ -35,7 +34,6 @@ type AiInsight = {
   insight: string;
   type: string;
 };
-// --- END FIX ---
 
 type StockDetailData = {
   ticker: string;
@@ -51,33 +49,28 @@ type StockDetailData = {
     label: string;
     history: { name: string; score: number }[];
   };
-  // --- FIX: Replaced 'any[]' with specific types ---
   recentNews: NewsItem[];
   keyStats: Record<string, string>;
   aiInsights: AiInsight[];
-  // --- END FIX ---
   financialRatios: Record<
     string,
     { value: string | number; rating: RatioRating }
   >;
-  // --- FIX: 'value' can be a number or a string (e.g., 'N/A') ---
   technicalIndicators: Record<
     string,
     { value: number | string; signal: TechnicalSignal }
   >;
-  // --- END FIX ---
 };
 
 export async function GET(
-  request: Request,
-  // --- FIX: Provided a specific type for context.params ---
-  context: { params: { ticker: string } }
+  // --- FIX: Change 'Request' to 'NextRequest' ---
+  request: NextRequest,
   // --- END FIX ---
+  context: { params: Promise<{ ticker: string }> }
 ) {
   try {
-    // --- FIX: 'context.params' is not a promise, removed 'await' ---
-    const { ticker: rawTicker } = context.params;
-    // --- END FIX ---
+    // This is correct: context.params is a plain object
+    const { ticker: rawTicker } = await context.params;
 
     if (!rawTicker) {
       return NextResponse.json(
@@ -91,7 +84,6 @@ export async function GET(
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    // --- UPDATED: Fetch from Yahoo and Firestore in parallel ---
     const [quote, chartResult, searchResult, sentimentSnap] = await Promise.all([
       yahooFinance.quote(ticker),
       yahooFinance.chart(ticker, {
@@ -100,10 +92,8 @@ export async function GET(
         interval: '1d',
       }),
       yahooFinance.search(ticker, { newsCount: 5 }),
-      // --- NEW: Fetch sentiment doc using Admin SDK syntax ---
       db.collection('sentiment').doc(ticker).get(),
     ]);
-    // --- END UPDATED ---
 
     if (!quote || !quote.regularMarketPrice) {
       return NextResponse.json(
@@ -121,7 +111,7 @@ export async function GET(
       changeVal > 0 ? 'positive' : changeVal < 0 ? 'negative' : 'neutral';
 
     const priceHistory: { name: string; price: number }[] =
-      // --- FIX: Corrected 'q' type to allow for 'null' values from the library ---
+      // --- FIX (from previous turn): Allow for 'null' values ---
       historicalQuotes.map((q: { date: string | Date; close?: number | null; adjclose?: number | null }) => ({
         name: new Date(q.date).toLocaleString('en-US', {
           month: 'short',
@@ -132,8 +122,6 @@ export async function GET(
       }));
     // --- END FIX ---
 
-    // Format news and assign mock sentiment
-    // --- FIX: Typed 'item' to avoid implicit 'any' and added 'as' assertion ---
     const recentNews: NewsItem[] = recentNewsRaw.map(
       (item: {
         uuid: string;
@@ -147,15 +135,12 @@ export async function GET(
         timestamp: new Date(item.providerPublishTime).toLocaleString(),
         sentiment: ['positive', 'negative', 'neutral'][
           Math.floor(Math.random() * 3)
-        ] as 'positive' | 'negative' | 'neutral', // Assert type
+        ] as 'positive' | 'negative' | 'neutral',
       })
     );
-    // --- END FIX ---
 
-    // --- UPDATED KEY STATS with more data points ---
     const keyStats = {
       'Prev. Close': quote.regularMarketPreviousClose?.toFixed(2) ?? 'N/A',
-      // --- FIX: Corrected 'N/IA' typo to 'N/A' ---
       'Market Cap':
         quote.marketCap?.toLocaleString('en-US', {
           notation: 'compact',
@@ -173,10 +158,7 @@ export async function GET(
       'P/S Ratio': quote.priceToSales?.toFixed(2) ?? 'N/A',
       'Avg. Volume': quote.averageDailyVolume3Month?.toLocaleString() ?? 'N/A',
     };
-    // --- END UPDATED KEY STATS ---
 
-    // --- NEW MOCK DATA: Financial Ratios (Premium) ---
-    // --- FIX: Apply type to the const to avoid 'as' cast later ---
     const financialRatios: StockDetailData['financialRatios'] = {
       'P/E Ratio': {
         value: quote.trailingPE ? quote.trailingPE.toFixed(2) : 'N/A',
@@ -201,12 +183,8 @@ export async function GET(
         rating: 'Strong',
       },
     };
-    // --- END FIX ---
-
-    // --- NEW MOCK DATA: Technical Indicators (Premium) ---
-    // --- FIX: Apply type to the const to avoid 'as' cast later ---
+    
     const technicalIndicators: StockDetailData['technicalIndicators'] = {
-      // --- FIX: Removed redundant 'as TechnicalSignal' ---
       'RSI (14)': { value: 68.5, signal: 'Hold' },
       MACD: { value: 1.25, signal: 'Buy' },
       'SMA (50)': {
@@ -219,9 +197,7 @@ export async function GET(
       },
       Stochastics: { value: 85.1, signal: 'Sell' },
     };
-    // --- END FIX ---
 
-    // --- Mocked AI Data (Enhanced) ---
     const aiSummary = `${
       quote.longName || ticker
     } is currently showing a strong positive sentiment trend driven by recent product announcements and better-than-expected earnings projections. The AI detects a low correlation between current price and overall social media volume, suggesting the positive shift is news-driven rather than speculative chatter.`;
@@ -246,13 +222,10 @@ export async function GET(
         type: 'correlation',
       },
     ];
-    // --- End Mocked AI Data ---
 
-    // --- NEW: Process Real Sentiment Data ---
-    let sentimentScore = 0; // Default score
-    let sentimentLabel = 'Neutral'; // Default label
+    let sentimentScore = 0;
+    let sentimentLabel = 'Neutral';
 
-    // --- UPDATED: Use Admin SDK's '.exists' property ---
     if (sentimentSnap.exists) {
       const sentimentData = sentimentSnap.data();
       if (sentimentData) {
@@ -260,7 +233,6 @@ export async function GET(
         sentimentLabel = getSentimentLabel(sentimentScore);
       }
     }
-    // --- END NEW ---
 
     const data: StockDetailData = {
       ticker: ticker,
@@ -274,10 +246,8 @@ export async function GET(
       priceHistory: priceHistory,
       keyStats: keyStats,
       recentNews: recentNews,
-      // --- FIX: Removed 'as' casts, as they are no longer needed ---
       financialRatios: financialRatios,
       technicalIndicators: technicalIndicators,
-      // --- END FIX ---
       aiSummary: aiSummary,
       sentiment: {
         score: sentimentScore,
@@ -292,14 +262,12 @@ export async function GET(
 
     return NextResponse.json(data);
   } catch (error: unknown) {
-    // --- FIX: Typed 'error' as 'unknown' for better type safety ---
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
     console.error('API Error:', errorMessage, errorStack);
 
     if (errorMessage.includes('404')) {
-      // --- FIX: Use rawTicker from context in error message ---
-      const rawTicker = (context.params as { ticker: string }).ticker;
+      const rawTicker = (await context.params as { ticker: string }).ticker;
       return NextResponse.json(
         { error: `Stock data not found for ${rawTicker}` },
         { status: 404 }
@@ -309,6 +277,5 @@ export async function GET(
       { error: 'Failed to fetch stock data from Yahoo Finance' },
       { status: 500 }
     );
-    // --- END FIX ---
   }
 }

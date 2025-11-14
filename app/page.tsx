@@ -40,7 +40,7 @@ const sectionVariants = {
     y: 0,
     transition: { duration: 0.7, type: "spring" },
   },
-};
+} as const;
 
 export default function Home() {
   return (
