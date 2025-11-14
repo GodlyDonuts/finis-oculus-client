@@ -1,15 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  async rewrites() {
-    return [
-      {
-        // This matches any path starting with /api/python/
-        source: "/api/python/:path*",
-        // And proxies it to your Cloud Run backend
-        destination: "https://finis-oculus-api-376447566369.us-central1.run.app/:path*",
-      },
-    ];
-  },
+  // (other configurations might be here, but the rewrites are gone)
 };
 
 export default nextConfig;
