@@ -6,7 +6,11 @@ import type { NextRequest } from 'next/server';
 // Your *real* backend URL
 const TARGET_URL = 'https://finis-oculus-api-376447566369.us-central1.run.app';
 
-async function handler(req: NextRequest) {
+/**
+ * This is the core proxy logic. It takes the incoming request,
+ * copies the important headers, and forwards it to the real backend.
+ */
+async function proxyRequest(req: NextRequest) {
   // 1. Get the path from the incoming request (e.g., /get_watchlist_details)
   const path = req.nextUrl.pathname.replace('/api/python', '');
   
@@ -17,9 +21,9 @@ async function handler(req: NextRequest) {
   const headers = new Headers();
   headers.set('Content-Type', req.headers.get('Content-Type') || 'application/json');
   
+  // This is the most critical part: forwarding the Firebase auth token
   const authHeader = req.headers.get('Authorization');
   if (authHeader) {
-    // This is the most important part: forwarding the token
     headers.set('Authorization', authHeader);
   }
 
@@ -42,5 +46,26 @@ async function handler(req: NextRequest) {
   }
 }
 
-// Export the handler for all common HTTP methods
-export { handler as GET, handler as POST, handler as PUT, handler as DELETE, handler as PATCH };
+// --- Explicit Handlers ---
+// By exporting functions named POST, GET, DELETE, etc.,
+// we explicitly tell Vercel's App Router to accept these methods.
+
+export async function POST(req: NextRequest) {
+  return proxyRequest(req);
+}
+
+export async function GET(req: NextRequest) {
+  return proxyRequest(req);
+}
+
+export async function DELETE(req: NextRequest) {
+  return proxyRequest(req);
+}
+
+export async function PUT(req: NextRequest) {
+  return proxyRequest(req);
+}
+
+export async function PATCH(req: NextRequest) {
+  return proxyRequest(req);
+}
