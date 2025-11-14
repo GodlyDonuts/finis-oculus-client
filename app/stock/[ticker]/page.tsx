@@ -236,7 +236,10 @@ export default function StockDetailPage() {
     }
   };
 
-  const getHoverChange = (price: number, base: number) => {
+  const getHoverChange = (
+    price: number,
+    base: number
+  ): { text: string; type: "positive" | "negative" | "neutral" } => {
     if (!price || !base) return { text: "-", type: "neutral" };
     const changeVal = price - base;
     const changePct = (changeVal / base) * 100;
@@ -609,13 +612,19 @@ export default function StockDetailPage() {
   );
 }
 
-// --- Custom Tooltip Component (Remains the same) ---
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: any[];
+  label?: string | number;
+  isBarChart?: boolean;
+}
+
 const CustomTooltip = ({
   active,
   payload,
   label,
   isBarChart = false,
-}: TooltipProps<number, string> & { isBarChart?: boolean }) => {
+}: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg border border-border/50 bg-background/90 p-3 shadow-lg backdrop-blur-sm">

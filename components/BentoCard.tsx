@@ -1,18 +1,16 @@
 // components/BentoCard.tsx
 
 "use client";
-import { motion } from "framer-motion";
+import { motion, HTMLMotionProps } from "framer-motion"; // 1. Import HTMLMotionProps
 import { cn } from "@/lib/utils";
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
-};
+} as const; // 3. Add 'as const'
 
-interface BentoCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  className?: string;
-  children: React.ReactNode;
-}
+// 2. Extend HTMLMotionProps instead. It already includes 'className' and 'children'.
+interface BentoCardProps extends HTMLMotionProps<"div"> {}
 
 export function BentoCard({ className, children, ...props }: BentoCardProps) {
   return (
