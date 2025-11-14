@@ -4,12 +4,12 @@ import { getFirestore } from "firebase/firestore";
 
 // Read variables from .env.local
 const firebaseConfig = {
-  apiKey: "AIzaSyCizoMwr4G4_D2-1xc7QPmUSIr_wEFFkFM",
-  authDomain: "finis-oculus.firebaseapp.com",
-  projectId: "finis-oculus",
-  storageBucket: "finis-oculus.firebasestorage.app",
-  messagingSenderId: "682539331216",
-  appId: "1:682539331216:web:96ccff82c1f6c1a3a6b215"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
