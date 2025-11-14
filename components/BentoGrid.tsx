@@ -20,7 +20,7 @@ const sectionVariants = {
     y: 0,
     transition: { duration: 0.7, type: "spring", staggerChildren: 0.1 },
   },
-};
+} as const;
 
 export function BentoGrid() {
   return (
