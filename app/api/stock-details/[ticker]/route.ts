@@ -21,11 +21,27 @@ function getSentimentLabel(score: number): string {
 type RatioRating = 'Strong' | 'Neutral' | 'Weak';
 type TechnicalSignal = 'Buy' | 'Hold' | 'Sell' | 'N/A';
 
+// --- FIX: Defined types for 'any[]' properties ---
+type NewsItem = {
+  id: string;
+  headline: string;
+  source: string;
+  timestamp: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+};
+
+type AiInsight = {
+  id: number;
+  insight: string;
+  type: string;
+};
+// --- END FIX ---
+
 type StockDetailData = {
   ticker: string;
   name: string;
   price: number;
-  previousClose: number; 
+  previousClose: number;
   change: string;
   changeType: 'positive' | 'negative' | 'neutral';
   aiSummary: string;
@@ -35,20 +51,33 @@ type StockDetailData = {
     label: string;
     history: { name: string; score: number }[];
   };
-  recentNews: any[];
+  // --- FIX: Replaced 'any[]' with specific types ---
+  recentNews: NewsItem[];
   keyStats: Record<string, string>;
-  aiInsights: any[];
-  financialRatios: Record<string, { value: string | number, rating: RatioRating }>;
-  technicalIndicators: Record<string, { value: number, signal: TechnicalSignal }>;
+  aiInsights: AiInsight[];
+  // --- END FIX ---
+  financialRatios: Record<
+    string,
+    { value: string | number; rating: RatioRating }
+  >;
+  // --- FIX: 'value' can be a number or a string (e.g., 'N/A') ---
+  technicalIndicators: Record<
+    string,
+    { value: number | string; signal: TechnicalSignal }
+  >;
+  // --- END FIX ---
 };
 
 export async function GET(
   request: Request,
-  context: { params: any } 
+  // --- FIX: Provided a specific type for context.params ---
+  context: { params: { ticker: string } }
+  // --- END FIX ---
 ) {
   try {
-    const awaitedParams = await context.params;
-    const { ticker: rawTicker } = awaitedParams;
+    // --- FIX: 'context.params' is not a promise, removed 'await' ---
+    const { ticker: rawTicker } = context.params;
+    // --- END FIX ---
 
     if (!rawTicker) {
       return NextResponse.json(
@@ -56,7 +85,7 @@ export async function GET(
         { status: 400 }
       );
     }
-    
+
     const ticker = rawTicker.toUpperCase();
 
     const sixMonthsAgo = new Date();
@@ -72,7 +101,7 @@ export async function GET(
       }),
       yahooFinance.search(ticker, { newsCount: 5 }),
       // --- NEW: Fetch sentiment doc using Admin SDK syntax ---
-      db.collection('sentiment').doc(ticker).get()
+      db.collection('sentiment').doc(ticker).get(),
     ]);
     // --- END UPDATED ---
 
@@ -85,35 +114,58 @@ export async function GET(
 
     const historicalQuotes = chartResult?.quotes || [];
     const recentNewsRaw = searchResult?.news || [];
-    
+
     const changePct = quote.regularMarketChangePercent ?? 0;
     const changeVal = quote.regularMarketChange ?? 0;
     const changeType =
       changeVal > 0 ? 'positive' : changeVal < 0 ? 'negative' : 'neutral';
 
-    const priceHistory: { name: string; price: number }[] = historicalQuotes.map((q: any) => ({
-      name: new Date(q.date).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      }),
-      price: q.close ?? q.adjclose ?? 0,
-    }));
+    const priceHistory: { name: string; price: number }[] =
+      // --- FIX: Corrected 'q' type to allow for 'null' values from the library ---
+      historicalQuotes.map((q: { date: string | Date; close?: number | null; adjclose?: number | null }) => ({
+        name: new Date(q.date).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        }),
+        // The '??' operator correctly handles both null and undefined
+        price: q.close ?? q.adjclose ?? 0,
+      }));
+    // --- END FIX ---
 
     // Format news and assign mock sentiment
-    const recentNews = recentNewsRaw.map((item: any) => ({
-      id: item.uuid,
-      headline: item.title,
-      source: item.publisher,
-      timestamp: new Date(item.providerPublishTime).toLocaleString(),
-      sentiment: ['positive', 'negative', 'neutral'][Math.floor(Math.random() * 3)], 
-    }));
+    // --- FIX: Typed 'item' to avoid implicit 'any' and added 'as' assertion ---
+    const recentNews: NewsItem[] = recentNewsRaw.map(
+      (item: {
+        uuid: string;
+        title: string;
+        publisher: string;
+        providerPublishTime: string | number | Date;
+      }) => ({
+        id: item.uuid,
+        headline: item.title,
+        source: item.publisher,
+        timestamp: new Date(item.providerPublishTime).toLocaleString(),
+        sentiment: ['positive', 'negative', 'neutral'][
+          Math.floor(Math.random() * 3)
+        ] as 'positive' | 'negative' | 'neutral', // Assert type
+      })
+    );
+    // --- END FIX ---
 
     // --- UPDATED KEY STATS with more data points ---
     const keyStats = {
-      'Prev. Close': quote.regularMarketPreviousClose?.toFixed(2) ?? 'N/A', 
+      'Prev. Close': quote.regularMarketPreviousClose?.toFixed(2) ?? 'N/A',
       // --- FIX: Corrected 'N/IA' typo to 'N/A' ---
-      'Market Cap': quote.marketCap?.toLocaleString('en-US', { notation: 'compact', compactDisplay: 'short' }) ?? 'N/A',
-      'Enterprise Value': quote.enterpriseValue?.toLocaleString('en-US', { notation: 'compact', compactDisplay: 'short' }) ?? 'N/A',
+      'Market Cap':
+        quote.marketCap?.toLocaleString('en-US', {
+          notation: 'compact',
+          compactDisplay: 'short',
+        }) ?? 'N/A',
+      'Enterprise Value':
+        quote.enterpriseValue?.toLocaleString('en-US', {
+          notation: 'compact',
+          compactDisplay: 'short',
+        }) ?? 'N/A',
       'Beta (5Y)': quote.beta?.toFixed(2) ?? 'N/A',
       '52 Week High': quote.fiftyTwoWeekHigh?.toFixed(2) ?? 'N/A',
       '52 Week Low': quote.fiftyTwoWeekLow?.toFixed(2) ?? 'N/A',
@@ -124,47 +176,75 @@ export async function GET(
     // --- END UPDATED KEY STATS ---
 
     // --- NEW MOCK DATA: Financial Ratios (Premium) ---
-    const financialRatios = {
-        'P/E Ratio': { value: quote.trailingPE ? quote.trailingPE.toFixed(2) : 'N/A', rating: quote.trailingPE && quote.trailingPE < 25 ? 'Strong' : quote.trailingPE && quote.trailingPE > 45 ? 'Weak' : 'Neutral' },
-        'Debt/Equity': { value: 0.52, rating: 'Strong' },
-        'Current Ratio': { value: 1.89, rating: 'Strong' },
-        'ROE': { value: '15.4%', rating: 'Neutral' },
-        'Gross Margin': { value: '42.1%', rating: 'Strong' },
-        'EBITDA': { value: quote.ebitda ? quote.ebitda.toLocaleString('en-US', { notation: 'compact', compactDisplay: 'short' }) : 'N/A', rating: 'Strong' },
+    // --- FIX: Apply type to the const to avoid 'as' cast later ---
+    const financialRatios: StockDetailData['financialRatios'] = {
+      'P/E Ratio': {
+        value: quote.trailingPE ? quote.trailingPE.toFixed(2) : 'N/A',
+        rating:
+          quote.trailingPE && quote.trailingPE < 25
+            ? 'Strong'
+            : quote.trailingPE && quote.trailingPE > 45
+            ? 'Weak'
+            : 'Neutral',
+      },
+      'Debt/Equity': { value: 0.52, rating: 'Strong' },
+      'Current Ratio': { value: 1.89, rating: 'Strong' },
+      ROE: { value: '15.4%', rating: 'Neutral' },
+      'Gross Margin': { value: '42.1%', rating: 'Strong' },
+      EBITDA: {
+        value: quote.ebitda
+          ? quote.ebitda.toLocaleString('en-US', {
+              notation: 'compact',
+              compactDisplay: 'short',
+            })
+          : 'N/A',
+        rating: 'Strong',
+      },
     };
-    
+    // --- END FIX ---
+
     // --- NEW MOCK DATA: Technical Indicators (Premium) ---
-    const technicalIndicators = {
-        'RSI (14)': { value: 68.5, signal: 'Hold' as TechnicalSignal },
-        'MACD': { value: 1.25, signal: 'Buy' as TechnicalSignal },
-        'SMA (50)': { value: quote.fiftyDayAverage?.toFixed(2) ?? 'N/A', signal: 'Buy' as TechnicalSignal },
-        'SMA (200)': { value: quote.twoHundredDayAverage?.toFixed(2) ?? 'N/A', signal: 'Buy' as TechnicalSignal },
-        'Stochastics': { value: 85.1, signal: 'Sell' as TechnicalSignal },
+    // --- FIX: Apply type to the const to avoid 'as' cast later ---
+    const technicalIndicators: StockDetailData['technicalIndicators'] = {
+      // --- FIX: Removed redundant 'as TechnicalSignal' ---
+      'RSI (14)': { value: 68.5, signal: 'Hold' },
+      MACD: { value: 1.25, signal: 'Buy' },
+      'SMA (50)': {
+        value: quote.fiftyDayAverage?.toFixed(2) ?? 'N/A',
+        signal: 'Buy',
+      },
+      'SMA (200)': {
+        value: quote.twoHundredDayAverage?.toFixed(2) ?? 'N/A',
+        signal: 'Buy',
+      },
+      Stochastics: { value: 85.1, signal: 'Sell' },
     };
-    // --- END NEW MOCK DATA ---
-    
+    // --- END FIX ---
 
     // --- Mocked AI Data (Enhanced) ---
     const aiSummary = `${
-        quote.longName || ticker
-      } is currently showing a strong positive sentiment trend driven by recent product announcements and better-than-expected earnings projections. The AI detects a low correlation between current price and overall social media volume, suggesting the positive shift is news-driven rather than speculative chatter.`;
-      
-    const aiInsights = [
-        {
-          id: 1,
-          insight: 'Technical analysis indicates the 50-day moving average is crossing the 200-day, a classic "Golden Cross" buy signal.',
-          type: 'technical',
-        },
-        {
-          id: 2,
-          insight: 'Social media volume is 30% below the 30-day average, suggesting a low-risk entry point relative to media hype.',
-          type: 'social',
-        },
-        {
-          id: 3,
-          insight: 'Analyst ratings have been upgraded 4 times in the last 60 days, showing strong institutional confidence.',
-          type: 'correlation',
-        },
+      quote.longName || ticker
+    } is currently showing a strong positive sentiment trend driven by recent product announcements and better-than-expected earnings projections. The AI detects a low correlation between current price and overall social media volume, suggesting the positive shift is news-driven rather than speculative chatter.`;
+
+    const aiInsights: AiInsight[] = [
+      {
+        id: 1,
+        insight:
+          'Technical analysis indicates the 50-day moving average is crossing the 200-day, a classic "Golden Cross" buy signal.',
+        type: 'technical',
+      },
+      {
+        id: 2,
+        insight:
+          'Social media volume is 30% below the 30-day average, suggesting a low-risk entry point relative to media hype.',
+        type: 'social',
+      },
+      {
+        id: 3,
+        insight:
+          'Analyst ratings have been upgraded 4 times in the last 60 days, showing strong institutional confidence.',
+        type: 'correlation',
+      },
     ];
     // --- End Mocked AI Data ---
 
@@ -182,12 +262,11 @@ export async function GET(
     }
     // --- END NEW ---
 
-
     const data: StockDetailData = {
       ticker: ticker,
       name: quote.longName || quote.shortName || ticker,
-      price: quote.regularMarketPrice, 
-      previousClose: quote.regularMarketPreviousClose, 
+      price: quote.regularMarketPrice,
+      previousClose: quote.regularMarketPreviousClose,
       change: `${changeVal > 0 ? '+' : ''}${changeVal.toFixed(
         2
       )} (${changePct.toFixed(2)}%)`,
@@ -195,26 +274,34 @@ export async function GET(
       priceHistory: priceHistory,
       keyStats: keyStats,
       recentNews: recentNews,
-      financialRatios: financialRatios as StockDetailData['financialRatios'],
-      technicalIndicators: technicalIndicators as StockDetailData['technicalIndicators'],
+      // --- FIX: Removed 'as' casts, as they are no longer needed ---
+      financialRatios: financialRatios,
+      technicalIndicators: technicalIndicators,
+      // --- END FIX ---
       aiSummary: aiSummary,
       sentiment: {
-        score: sentimentScore, 
+        score: sentimentScore,
         label: sentimentLabel,
         history: priceHistory.map((p) => ({
           name: p.name,
-          score: Math.random() * 0.5 + 0.3, 
+          score: Math.random() * 0.5 + 0.3,
         })),
       },
       aiInsights: aiInsights,
     };
 
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('API Error:', error.message, error.stack);
-    if (error.message.includes('404')) {
+  } catch (error: unknown) {
+    // --- FIX: Typed 'error' as 'unknown' for better type safety ---
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('API Error:', errorMessage, errorStack);
+
+    if (errorMessage.includes('404')) {
+      // --- FIX: Use rawTicker from context in error message ---
+      const rawTicker = (context.params as { ticker: string }).ticker;
       return NextResponse.json(
-        { error: `Stock data not found for ${context.params.ticker}` },
+        { error: `Stock data not found for ${rawTicker}` },
         { status: 404 }
       );
     }
@@ -222,5 +309,6 @@ export async function GET(
       { error: 'Failed to fetch stock data from Yahoo Finance' },
       { status: 500 }
     );
+    // --- END FIX ---
   }
 }
