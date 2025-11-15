@@ -47,7 +47,7 @@ export function PremiumGate({ children, featureName }: PremiumGateProps) {
             Unlock proprietary insights, AI signals, and deep financial analysis.
           </p>
           <Button className="mt-4 w-full" size="lg" asChild>
-            <Link href="/signup#pricing">
+            <Link href="https://buy.stripe.com/test_00w3cx8Sv22W75L3yOdnW00">
               <Zap className="mr-2 h-5 w-5 fill-white" />
               Upgrade to Premium
             </Link>
