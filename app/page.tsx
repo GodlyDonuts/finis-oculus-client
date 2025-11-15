@@ -10,13 +10,11 @@ import { LandingNavbar } from "@/components/LandingNavbar";
 import { LandingFooter } from "@/components/LandingFooter";
 import StockCard from "@/components/StockCard";
 import { HeroVisual } from "@/components/HeroVisual";
-
-// --- NEW COMPONENT IMPORTS ---
 import { SocialProof } from "@/components/SocialProof";
 import { BentoGrid } from "@/components/BentoGrid";
-import { HowItWorks } from "@/components/HowItWorks"; // <-- NEW
+import { HowItWorks } from "@/components/HowItWorks";
 import { Testimonials } from "@/components/Testimonials";
-// --- END NEW IMPORTS ---
+import { useAuth } from "@/context/authcontext";
 
 import {
   Zap,
@@ -43,6 +41,9 @@ const sectionVariants = {
 } as const;
 
 export default function Home() {
+  const { user, loading } = useAuth();
+  const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/test_00w3cx8Sv22W75L3yOdnW00";
+  
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
       <LandingNavbar />
@@ -250,8 +251,15 @@ export default function Home() {
                                     </li>
                                 </ul>
                             </div>
-                            <Button size="lg" className="w-full shadow-xl shadow-primary/30 transition-all bg-primary hover:bg-primary/90" asChild>
-                                <Link href="/signup">Unlock All Features</Link>
+                            <Button
+                              size="lg"
+                              className="w-full shadow-xl shadow-primary/30 transition-all bg-primary hover:bg-primary/90"
+                              disabled={loading} // Disable button while auth is loading
+                              asChild
+                            >
+                              <Link href={user ? STRIPE_PAYMENT_LINK : "/signup"}>
+                                {loading ? "Loading..." : user ? "Go to Checkout" : "Unlock All Features"}
+                              </Link>
                             </Button>
                             <p className="text-center text-sm text-muted-foreground">
                                 $100 billed annually (Save 17%)
