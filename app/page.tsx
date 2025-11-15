@@ -28,6 +28,7 @@ const mockAAPL = {
   price: 189.99,
   sentiment: 0.75,
   sparkline: [180, 182, 181, 184, 186, 185, 189],
+  aiSignal: "BUY" as const,
 };
 
 // --- Animation Variants (Unchanged) ---

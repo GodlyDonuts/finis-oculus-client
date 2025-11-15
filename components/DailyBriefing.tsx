@@ -85,11 +85,11 @@ export function DailyBriefing() {
               <span className="font-medium text-foreground">
                 You have{" "}
                 <strong className="text-green-500">
-                  {summary.buySignals} new AI 'Buy' signals
+                  {summary.buySignals} new AI positive signals
                 </strong>{" "}
                 and{" "}
                 <strong className="text-red-500">
-                  {summary.sellSignals} new 'Sell' signal
+                  {summary.sellSignals} new negative signal
                 </strong>{" "}
                 to review.
               </span>
