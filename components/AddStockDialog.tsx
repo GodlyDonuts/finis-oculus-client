@@ -1,3 +1,9 @@
+/*
+  File: components/AddStockDialog.tsx
+  Purpose: No changes required, but file is included for completeness.
+  The logic for validation and adding a stock is already robust
+  and works with the new Command Palette's `onAddStock` function.
+*/
 // File: components/AddStockDialog.tsx
 
 "use client";
@@ -45,21 +51,24 @@ export function AddStockDialog({ onStockAdded }: AddStockDialogProps) {
       if (!response.ok) {
         // Ticker is invalid or not found
         const data = await response.json();
-        toast.error(data.error || `Invalid ticker: ${upperTicker}`, { id: validationToastId });
+        toast.error(data.error || `Invalid ticker: ${upperTicker}`, {
+          id: validationToastId,
+        });
         return;
       }
 
       // 2. If validation is successful (response.ok)
       toast.dismiss(validationToastId); // Dismiss the "Validating..." toast
       onStockAdded(upperTicker); // Call the dashboard's add function
-      
+
       // 3. Close the dialog and reset the form
       setOpen(false);
       setTicker("");
-
     } catch (error) {
       // For network errors, etc.
-      toast.error("Validation failed. Please try again.", { id: validationToastId });
+      toast.error("Validation failed. Please try again.", {
+        id: validationToastId,
+      });
       console.error("Validation error:", error);
     } finally {
       setIsValidating(false);
@@ -104,7 +113,12 @@ export function AddStockDialog({ onStockAdded }: AddStockDialogProps) {
         </form>
         <DialogFooter>
           {/* --- Button handler is updated --- */}
-          <Button onClick={handleValidateAndAdd} type="submit" disabled={isValidating} className="w-full sm:w-auto">
+          <Button
+            onClick={handleValidateAndAdd}
+            type="submit"
+            disabled={isValidating}
+            className="w-full sm:w-auto"
+          >
             {isValidating ? "Validating..." : "Add Stock"}
           </Button>
         </DialogFooter>

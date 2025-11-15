@@ -1,48 +1,108 @@
-Finis Oculus: Professional Code & Design Critique
-This review evaluates the codebase through the lens of a venture investor and a senior engineering team, focusing on architectural integrity, performance under load, and enterprise-level polish. The aesthetic is highly successful; the technical implementation requires significant hardening.
-1. Critical Architectural & Security Review
-These are immediate red flags that indicate systemic issues with scale, performance, and security.
-1.1 Performance Killer: Sequential API Calls
-Location: app/api/stock-details/[ticker]/route.ts
-Impact: High Latency. The route currently makes three independent, time-consuming network calls (Yahoo Finance quote, chart, and search) sequentially. This triples the API response time and creates an unacceptable bottleneck.
-Mandatory Fix: All external data lookups must be executed in parallel using Promise.all() to minimize latency.
-1.2 Resource Inefficiency: Redundant Instantiation
-Location: app/api/stock-details/[ticker]/route.ts, app/api/stock-chart/[ticker]/route.ts
-Impact: Unnecessary overhead on every request. In a serverless/Edge environment, creating a new YahooFinance() instance on every single call adds avoidable latency and resource consumption.
-Mandatory Fix: Initialize the YahooFinance instance once at the module level (outside the export async function GET) and reuse the instance for all requests.
-1.3 Data Integrity Risk: Chart Desynchronization
-Location: app/stock/[ticker]/page.tsx
-Impact: When a user changes the chart range (1D, 1W), only the price points are updated from the /api/stock-chart endpoint. The main price, change, and key stats remain tied to the initial, potentially stale data from the full /api/stock-details call.
-Mandatory Fix: The separate chart API should return the full, current market data (price, change, changeType) along with the history. Alternatively, adopt a robust data fetching library like SWR or React Query to manage the state of the parent (stockData) and child (priceHistory) components declaratively and independently.
-1.4 Brittle Date Formatting Logic
-Location: app/api/stock-chart/[ticker]/route.ts
-Impact: The custom formatLabel logic is complex, difficult to maintain, and lacks robust localization and timezone handling.
-Mandatory Fix: Delete the custom formatLabel function and implement an industry-standard library like Day.js or date-fns. Relying on bespoke date logic is a massive source of bugs in financial applications.
-2. User Experience & Design Consistency Review
-The overall theme is strong, but attention to detail is slipping in key areas.
-2.1 Inconsistent Onboarding Cards
-Location: app/(auth)/signup/page.tsx and app/(auth)/login/page.tsx
-Problem: The sign-up card visually breaks the established premium soft-UI pattern on mobile by forcing border-0 bg-transparent. This creates a disjointed, non-branded feel between the login and sign-up flows.
-Polish Fix: Enforce the uniform <Card className="w-full max-w-sm"> style across both authentication pages at all breakpoints to maintain brand consistency.
-2.2 Missing Context in StockCard Tooltip
-Location: components/StockCard.tsx
-Problem: The sparkline tooltip only displays the price, ignoring the core product value (AI sentiment).
-High-Value Fix: The tooltip must be updated to display the date/time of the price point and the AI Sentiment Score at that moment. This transforms a visual element into a dense, actionable data layer.
-2.3 Sub-Par Hero Gradient Branding
-Location: app/globals.css
-Problem: The light mode hero gradient uses a generic grayscale (from-gray-900 to-gray-500).
-Polish Fix: The most prominent text on the site should reinforce the brand. The gradient must be switched to utilize the --primary brand color variable to elevate the brand cohesion and appearance.
-2.4 Unaddressed Dark Mode Shadows
-Location: components/ui/button.tsx
-Problem: The default button shadow (shadow-lg shadow-primary/20) is not explicitly inverted for dark mode. Shadows intended for light backgrounds often look cheap or distracting on dark backgrounds.
-Polish Fix: Ensure the shadow for primary elements in the .dark class is either muted significantly or dynamically swapped for a subtle inner glow/border to preserve the clean, modern feel.
-3. Trust Deficits: The Mock Data Problem
-The entire premise of "AI-Powered Market Intelligence" is undermined by the pervasive use of placeholders for core data features.
-3.1 The Faked AI Pipeline
-Location: app/dashboard/page.tsx, app/api/stock-details/[ticker]/route.ts
-Problem: Key investor-facing data points—like the sparkline data, the aiSummary, and the entire sentiment object—are hardcoded or generated with Math.random(). This is the biggest deficit. An investor knows the UI is a wrapper and will ask immediately for proof of the working data engine.
-Actionable Fix: The goal must be to replace all Math.random() and hardcoded strings with actual, functional calls to the (mocked, but functional) AI API endpoints. The product is the data, not the wrapper.
-3.2 Generic Empty State Missed Opportunity
-Location: app/dashboard/page.tsx
-Problem: The empty state is a basic "add stock" form. It fails to activate the user or showcase the product's value immediately.
-High-Touch Fix: Leverage this space to present a highly valuable, AI-driven feature that requires no input. Show a curated list of "AI Recommended: Top 3 Sentiment Movers Today" with a one-click "Add to Watchlist" button. This immediately provides utility and demonstrates the core AI value.
+PROJECT: Finis Oculus Dashboard 2.0 ("The "Wow" Factor)
+CLIENT: Finis Oculus
+FROM: $10M Design Agency
+DATE: 2025-11-14
+
+PHILOSOPHY:
+The current dashboard is functional. A $10M dashboard is **experiential**. It should feel less like a tool and more like a personalized, intelligent financial co-pilot. The user shouldn't just *read* data; they should *interact* with it and feel understood. The "Oculus" (eye) theme implies clarity and vision. Our design must deliver this.
+
+We will achieve this through three pillars:
+1.  **Hyper-Personalization:** The dashboard must feel like it was built *for the user* and *only* the user.
+2.  **Data as an Experience:** Transform static numbers into beautiful, interactive, and insightful visualizations that tell a story.
+3.  **Living App:** The app must feel alive, breathing with real-time market data and AI insights.
+
+---
+### SECTION 1: THE "DAILY BRIEFING" (New Component)
+---
+
+**GOAL:** Immediately hook the user with personalized value. Replace the generic "Market Overview" as the primary element.
+
++   **Personalized Greeting:**
+    * "Good morning, [User Name]. Here is your 1-minute briefing."
+
++   **Watchlist AI Summary:**
+    * A headline that summarizes the user's *entire watchlist*.
+    * "Overall, your watchlist sentiment is **Strongly Positive (+0.34)**."
+    * "You have **3 new AI 'Buy' signals** and **1 new 'Sell' signal** to review."
+
++   **"What's Happening" Module:**
+    * A 3-item list of the most critical events *right now* related to their holdings.
+    * `[AAPL]`: "Is trending on social media, with sentiment shifting negative."
+    * `[MSFT]`: "Has a new 'Golden Cross' technical signal detected by our AI."
+    * `[Market]`: "The S&P 500 Sentiment just crossed into 'Negative' territory."
+
+---
+### SECTION 2: THE "MARKET PULSE" (Replaces Market Overview)
+---
+
+**GOAL:** Reframe the generic market data through the unique "Finis Oculus" lens.
+
+* **AI-Powered Indices:**
+    * Don't just show the S&P 500 price. Show *our* data.
+    * "S&P 500: 5,432.10 (+0.5%)"
+    * "S&P 500 AI Sentiment: **Neutral (-0.02)**"
+
++   **Sentiment Heatmap (New Component):**
+    * A small, visual heatmap of the 11 major market sectors (Tech, Health, etc.).
+    * The color of each block is not price change, but *our AI sentiment score*.
+    * This is visually stunning and provides an instant, unique-to-us market overview.
+
++   **New Data Categories:**
+    * Create toggleable tabs.
+    * `Top Movers` (Price-based, everyone has this)
+    * `Top Sentiment Shifts` (Our data, this is the "wow")
+    * `Most Discussed` (Social media volume)
+
+---
+### SECTION 3: THE "LIVING" WATCHLIST (Enhancement)
+---
+
+**GOAL:** Make the watchlist the interactive, high-utility centerpiece of the dashboard.
+
++   **View Toggle:**
+    * **Grid View (Current):** Simple, visual, with enhanced `StockCard`s.
+    * **"Pro" List View:** A dense, data-rich table for power users. Columns: Ticker | Price | % Change | **Sentiment** | **AI Signal (Buy/Sell)** | Volume | Sparkline.
+    * **"Oculus" Heatmap View:** A full-screen version of the Sector Heatmap, but for the user's *entire watchlist*.
+
+* **Enhanced StockCard (`StockCard 2.0`):**
+    * Keep the existing data (price, sparkline).
+    * Add the **AI Signal** as a small, colored "badge" (e.g., "BUY", "SELL").
+    * The border of the card itself should have a subtle "glow" based on sentiment (green for positive, red for negative).
+    * On hover, the sparkline animates and reveals more data.
+
++   **Quick-Action Menu:**
+    * Add a "..." button to each `StockCard`.
+    * On click, show a small menu: `Remove from Watchlist` | `Set Alert` | `View Top Insights`.
+
+---
+### SECTION 4: "OCULUS AI FEED" (New Component)
+---
+
+**GOAL:** Make the AI the hero. This is the "Instagram feed" for their stocks, making the app addictive and indispensable.
+
++   **Real-Time Insights Feed:**
+    * A dedicated, scrolling panel on the dashboard.
+    * Shows a timestamped feed of AI-generated insights for stocks *in their watchlist*.
+    * `10:32 AM [AAPL]`: "AI detected a 40% spike in social media volume, correlating with a -0.15 sentiment drop."
+    * `10:30 AM [MSFT]`: "A new 'Golden Cross' technical signal has formed on the 50/200-day moving average."
+    * `10:28 AM [TSLA]`: "Sentiment-driving news detected: 'Tesla recalls 50,000 vehicles...'"
+    * This proves the app is *always working* for the user and makes it feel alive.
+
+---
+### SECTION 5: "WOW" POLISH & UTILITY
+---
+
++   **Command Palette (Cmd+K):**
+    * A floating search bar (like in Slack or Vercel) activated by `Cmd+K`.
+    * User can type: `AAPL` (to go to the stock page), `Add TSLA` (to add to watchlist), `Go to Settings`, `Toggle Theme`.
+    * This is the ultimate pro-user "wow" feature.
+
++   **Smarter Onboarding:**
+    * The first time a user visits the dashboard, it should *not* be empty.
+    * Show a welcome modal: "Welcome to Finis Oculus. We've added a few popular stocks to your watchlist to get you started."
+    * Pre-populate the watchlist with `AAPL`, `GOOG`, and `TSLA`.
+    * This *immediately* shows the user the value (StockCards, AI data) instead of giving them a blank screen and a "to-do" item.
+
++   **Visual Polish:**
+    * **Aurora/Glow Effects:** Use subtle, colored, blurred glows (like in your `HeroVisual`) as backgrounds for the main dashboard panels. The glow can subtly shift based on overall market sentiment (green/red).
+    * **Micro-interactions:** When a stock is added, don't just pop a toast. Have the `StockCard` animate in and find its place in the grid.
