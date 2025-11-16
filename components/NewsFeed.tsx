@@ -3,8 +3,6 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { TrendingUp, TrendingDown, Minus, ExternalLink } from "lucide-react";
@@ -32,90 +30,61 @@ const NewsSentimentIcon = ({ sentiment }: { sentiment: string }) => {
 
 // --- The NewsFeed Component ---
 export function NewsFeed({ ticker }: { ticker: string }) {
-  const [filter, setFilter] = useState("all");
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
-  const [page, setPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Now just loads once
 
-  // This effect runs when the filter changes
+  // This effect runs once when the ticker is available
   useEffect(() => {
-    // --- THIS IS THE FIX ---
-    // If ticker isn't loaded yet (it's an empty string), don't fetch.
     if (!ticker) {
-      return; 
+      return; // Don't fetch if ticker is empty
     }
-    // --- END FIX ---
 
-    // Reset state and fetch new data for the new filter
-    setNewsItems([]);
-    setPage(1);
-    setHasMore(true);
-    fetchNews(1, filter, true);
-  }, [filter, ticker]); // 'ticker' is a dependency
-
-  const fetchNews = async (
-    pageToFetch: number,
-    currentFilter: string,
-    isFilterChange: boolean = false
-  ) => {
-    // --- THIS IS A SECONDARY FIX ---
-    // Double-check ticker isn't empty before fetching
-    if (isLoading || !ticker) return;
-    // --- END FIX ---
-
-    setIsLoading(true);
-
-    try {
-      const res = await fetch(
-        `/api/stock-news/${ticker}?page=${pageToFetch}&filter=${currentFilter}`
-      );
-      
-      if (!res.ok) {
-        // Try to parse the error from the API
-        try {
+    const fetchNews = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch from the simplified API
+        const res = await fetch(`/api/stock-news/${ticker}`);
+        
+        if (!res.ok) {
           const errorData = await res.json();
           throw new Error(errorData.error || "Failed to fetch news");
-        } catch (e) {
-          throw new Error("Failed to fetch news");
         }
+        
+        const data = await res.json();
+        setNewsItems(data.news);
+
+      } catch (error: any) {
+        toast.error(error.message);
+      } finally {
+        setIsLoading(false);
       }
-      
-      const data = await res.json();
+    };
 
-      setNewsItems((prevItems) => 
-        isFilterChange ? data.news : [...prevItems, ...data.news]
-      );
-      setPage(data.nextPage);
-      setHasMore(data.hasMore);
-
-    } catch (error: any) {
-      toast.error(error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLoadMore = () => {
-    fetchNews(page, filter);
-  };
+    fetchNews();
+  }, [ticker]); // Only depends on ticker
 
   return (
     <Card>
       <CardContent className="pt-6">
-        <ToggleGroup
-          type="single"
-          value={filter}
-          onValueChange={(value) => value && setFilter(value)}
-          className="mb-4 grid grid-cols-3"
-        >
-          <ToggleGroupItem value="all">All</ToggleGroupItem>
-          <ToggleGroupItem value="news">News</ToggleGroupItem>
-          <ToggleGroupItem value="filings">SEC Filings</ToggleGroupItem>
-        </ToggleGroup>
-
+        {/* We no longer show filters */}
+        
         <div className="flex flex-col gap-6">
-          {newsItems.length > 0 && (
+          {isLoading && (
+            // Show skeletons on initial load
+            <div className="flex flex-col gap-6">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex gap-4">
+                  <Skeleton className="h-6 w-6 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-full rounded" />
+                    <Skeleton className="h-4 w-1/3 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!isLoading && newsItems.length > 0 && (
             <div className="flex flex-col gap-6">
               {newsItems.map((item) => (
                 <div key={item.id} className="flex items-start gap-4 border-b border-border/50 pb-6 last:border-b-0 last:pb-0">
@@ -133,7 +102,6 @@ export function NewsFeed({ ticker }: { ticker: string }) {
                     <div className="mt-1 flex gap-2 text-sm text-muted-foreground">
                       <span>{item.source}</span>
                       <span>&middot;</span>
-      
                       <span>{item.timestamp}</span>
                     </div>
                   </div>
@@ -142,35 +110,13 @@ export function NewsFeed({ ticker }: { ticker: string }) {
             </div>
           )}
 
-          {isLoading && (
-            <div className="flex flex-col gap-6">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="flex gap-4">
-                  <Skeleton className="h-6 w-6 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-5 w-full rounded" />
-                    <Skeleton className="h-4 w-1/3 rounded" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
           {!isLoading && newsItems.length === 0 && (
             <p className="text-center text-muted-foreground">
-              No {filter} items found for {ticker}.
+              No recent news items found for {ticker}.
             </p>
           )}
 
-          {hasMore && !isLoading && (
-            <Button
-              variant="outline"
-              onClick={handleLoadMore}
-              disabled={isLoading}
-            >
-              {isLoading ? "Loading..." : "Load More"}
-            </Button>
-          )}
+          {/* We no longer show a "Load More" button */}
         </div>
       </CardContent>
     </Card>
