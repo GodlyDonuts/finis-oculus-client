@@ -1,8 +1,9 @@
 /*
   File: components/TechnicalAnalysis.tsx
-  Purpose: Remove "Buy/Sell" text and replace with visual icons.
+  Purpose: Remove "Buy/Sell" text and icon from the main box, 
+  as this logic is now in the "Oculus Prism" as the "Momentum" score.
 */
-import * as React from "react"; // --- ADDED ---
+import * as React from "react"; 
 import {
   Card,
   CardHeader,
@@ -28,67 +29,44 @@ const signalClasses: Record<TechnicalSignal, string> = {
 };
 
 const indicatorIcon = (signal: TechnicalSignal) => {
-  if (signal === "Buy") return ArrowUp; // Return component
-  if (signal === "Sell") return ArrowDown; // Return component
-  return Signal; // Return component
+  if (signal === "Buy") return ArrowUp;
+  if (signal === "Sell") return ArrowDown;
+  return Signal;
 };
 
 export function TechnicalAnalysis({ indicators }: TechnicalAnalysisProps) {
-  // Logic to determine an overall signal
   const indicatorValues = Object.values(indicators || {});
-  const overallSignal = indicatorValues.reduce(
-    (acc, { signal }) => {
-      if (signal === "Buy") acc.buy++;
-      else if (signal === "Sell") acc.sell++;
-      else acc.hold++;
-      return acc;
-    },
-    { buy: 0, sell: 0, hold: 0 }
-  );
-
-  const finalSignal: TechnicalSignal =
-    overallSignal.buy > overallSignal.sell
-      ? "Buy"
-      : overallSignal.sell > overallSignal.buy
-      ? "Sell"
-      : "Hold";
 
   return (
     <Card className="border-2 border-border/50">
       <CardHeader className="border-b border-border/50 pb-4">
         <div className="flex items-center gap-3">
           <BarChart3 className="h-6 w-6 text-primary" />
-          <CardTitle>Technical Analysis Score</CardTitle>
+          <CardTitle>Technical Indicators</CardTitle>
         </div>
         <CardDescription className="text-sm font-medium text-destructive">
-          <strong>IMPORTANT:</strong> This is an automated technical indicator
+          <strong>IMPORTANT:</strong> This is automated technical data
           and NOT investment advice.
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
+        {/* --- MODIFICATION --- */}
+        {/* The overall signal box is now neutral, as the Prism shows the score. */}
         <motion.div
           className={cn(
             "flex flex-col items-center justify-center rounded-xl border-4 p-6 transition-all",
-            signalClasses[finalSignal]
+            "border-border/50 bg-background/50" // Neutral styling
           )}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <p className="text-sm text-muted-foreground">Overall Signal</p>
-
-          {/* --- MODIFIED: Replaced text with icon --- */}
-          <div className="py-4">
-            {React.createElement(indicatorIcon(finalSignal), {
-              className: "h-16 w-16",
-            })}
-          </div>
-          {/* --- END MODIFICATION --- */}
-
-          <p className="text-sm mt-1 text-muted-foreground">
+          <BarChart3 className="h-16 w-16 text-muted-foreground" />
+          <p className="text-sm mt-4 text-muted-foreground">
             Based on {indicatorValues.length} Key Indicators
           </p>
         </motion.div>
+        {/* --- END MODIFICATION --- */}
 
         <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-4">
           {Object.entries(indicators || {}).map(([key, { value, signal }]) => (
@@ -96,7 +74,6 @@ export function TechnicalAnalysis({ indicators }: TechnicalAnalysisProps) {
               <span className="text-sm text-muted-foreground">{key}</span>
               <div className="flex items-center justify-between text-lg font-semibold">
                 <span>{value}</span>
-                {/* --- MODIFIED: Removed text, icon-only --- */}
                 <div
                   className={cn(
                     "flex items-center gap-1 rounded-full p-1 text-xs font-medium",
@@ -107,7 +84,6 @@ export function TechnicalAnalysis({ indicators }: TechnicalAnalysisProps) {
                     className: "h-5 w-5",
                   })}
                 </div>
-                {/* --- END MODIFICATION --- */}
               </div>
             </div>
           ))}

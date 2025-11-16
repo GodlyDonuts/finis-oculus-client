@@ -1,0 +1,23 @@
+Major Features Still Pending
+1. Full Financial Statements:
+
+API: Our API currently stubs this (financialStatements: null). We would need to add a new query (like yahooFinance.financials(ticker)) to fetch the full Income Statement, Balance Sheet, and Cash Flow data.
+
+UI: We would need to build a new component (e.g., <FinancialStatementsTable />) inside the "Financials" tab to display this data.
+
+2. Full News & Filings Feed:
+
+API: Our API only grabs the top 10 news items. A "full" feed would require a new, dedicated API endpoint that allows for filtering (News, Social, SEC) and pagination ("infinite scroll").
+
+UI: The "News & Filings" tab needs to be built out with this new component and its filtering controls.
+
+3. Social Hype & Word Cloud:
+
+API: This is the most significant gap. This data (trending topics, social volume vs. average) is not available in yahoo-finance2. This would require a major platform extension, like integrating a third-party social listening API.
+
+Smaller Enhancements Still Pending
+Chart Date Picker: Adding a calendar for custom "from/to" date ranges in the AdvancedPriceChart.
+
+Key Stats Context: Adding the small inline "sector average" bar charts next to stats like "P/E Ratio."
+
+Interactive Sentiment: The "click a sentiment bar to see the news" feature, which would require connecting the chart to the news feed data.
