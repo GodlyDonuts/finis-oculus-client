@@ -1,35 +1,27 @@
 // components/OculusPrismSidebar.tsx
 "use client";
-// This component will use the existing Card component
+// import { useState } from "react"; // Kinetix: No longer needed
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "./ui/card";
 import { cn } from "@/lib/utils";
-// We will need a RadarChart component, likely from recharts
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-
-// (Type definitions copied from page.tsx for stubbing)
-type RatioRating = 'Strong' | 'Neutral' | 'Weak';
-type TechnicalSignal = 'Buy' | 'Hold' | 'Sell' | 'N/A';
-type StockDetailData = { /* ... (abbreviated) ... */ };
+import { motion } from "framer-motion";
+import { StockDetailData } from "@/app/stock/[ticker]/page"; // Import main type
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 
 interface OculusPrismSidebarProps {
-  sentiment: any;
-  financialRatios: Record<string, { value: string | number, rating: RatioRating }>;
-  technicalIndicators: Record<string, { value: number | string, signal: TechnicalSignal }>;
-  keyStats: Record<string, string>;
-  analystRatings: any; // Needs API
+  data: StockDetailData | null; // Accept null data
 }
 
 // Helper to derive scores (0-100) for the Prism.
-// This is a placeholder and should be refined.
 function derivePrismData(sentiment: any, financials: any, technicals: any) {
-  const sentimentScore = Math.round((sentiment.score + 1) * 50); // Convert -1..1 to 0..100
+  const sentimentScore = Math.round(((sentiment?.score ?? 0) + 1) * 50); // Convert -1..1 to 0..100
   
   // TODO: Implement real logic
   const valuationScore = 65; // Placeholder
   const momentumScore = 80; // Placeholder
   const growthScore = 40; // Placeholder
-  const hypeScore = 55; // Placeholder (Needs social volume data)
-
+  const hypeScore = 55; // Placeholder
+  
   return [
     { subject: 'Sentiment', score: sentimentScore, fullMark: 100 },
     { subject: 'Valuation', score: valuationScore, fullMark: 100 },
@@ -39,39 +31,97 @@ function derivePrismData(sentiment: any, financials: any, technicals: any) {
   ];
 }
 
-export function OculusPrismSidebar({
-  sentiment,
-  financialRatios,
-  technicalIndicators,
-  keyStats,
-  analystRatings,
-}: OculusPrismSidebarProps) {
+export function OculusPrismSidebar({ data }: OculusPrismSidebarProps) {
+  // Kinetix: Component-level loading state
+  const isLoading = !data;
 
+  // Destructure data with fallbacks
+  const {
+    sentiment,
+    financialRatios,
+    technicalIndicators,
+    keyStats,
+    analystRatings,
+  } = data || {};
+
+  // Kinetix: State for "Prism 2.0" card-flip has been REMOVED
   const prismData = derivePrismData(sentiment, financialRatios, technicalIndicators);
 
   const sentimentColor =
-    sentiment.score > 0.1
+    sentiment && sentiment.score > 0.1
       ? "text-green-500"
-      : sentiment.score < -0.1
+      : sentiment && sentiment.score < -0.1
       ? "text-red-500"
       : "text-gray-500";
   const sentimentBorderColor =
-    sentiment.score > 0.1
+    sentiment && sentiment.score > 0.1
       ? "border-green-500/30"
-      : sentiment.score < -0.1
+      : sentiment && sentiment.score < -0.1
       ? "border-red-500/30"
       : "border-border/50";
 
+  // --- Kinetix: "Calm Loading" Skeletons ---
+  if (isLoading) {
+    return (
+      <>
+        {/* Prism Card Skeleton */}
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32 rounded-md" />
+            <Skeleton className="h-4 w-48 rounded-md" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-64 w-full rounded-full" />
+          </CardContent>
+        </Card>
+        {/* Sentiment Card Skeleton */}
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-40 rounded-md" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-14 w-24 rounded-md" />
+            <Skeleton className="mt-2 h-6 w-32 rounded-md" />
+          </CardContent>
+        </Card>
+        {/* Key Stats Skeleton */}
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32 rounded-md" />
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-24 rounded-md" />
+                <Skeleton className="h-5 w-16 rounded-md" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </>
+    );
+  }
+  // --- End Skeletons ---
+
+
   return (
     <>
-      {/* Zone 2.1: The Oculus Prism Card */}
+      {/* Zone 2.1: The Oculus Prism Card (Kinetix 2.0) */}
+      {/* Kinetix: REMOVED flip wrappers and onClick */}
       <Card>
         <CardHeader>
           <CardTitle>Oculus Prism</CardTitle>
+          {/* Kinetix: UPDATED description */}
           <CardDescription>A 360° view of the stock's key factors.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-64 w-full">
+          <motion.div 
+            className="h-64 w-full"
+            // Kinetix: "Animated Spokes" (Hype Jitter)
+            // This is a mock pulse. A real impl would tie this to data.
+            animate={{ scale: [1, 1.02, 1] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={prismData}>
                 <PolarGrid />
@@ -80,9 +130,11 @@ export function OculusPrismSidebar({
                 <Radar name="Score" dataKey="score" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.6} />
               </RadarChart>
             </ResponsiveContainer>
-          </div>
+          </motion.div>
         </CardContent>
       </Card>
+      {/* Kinetix: REMOVED the "back of card" component */}
+
 
       {/* Zone 2.2: Enhanced AI Sentiment Card */}
       <Card className={cn("border-2", sentimentBorderColor)}>
@@ -97,11 +149,10 @@ export function OculusPrismSidebar({
           <p className="text-2xl font-medium text-muted-foreground">
             {sentiment.label ?? 'No Data'}
           </p>
-          {/* TODO: Add interactive sentiment history chart here */}
         </CardContent>
       </Card>
 
-      {/* Zone 2.3: Analyst Ratings (New) */}
+      {/* Zone 2.3: Analyst Ratings */}
       <Card>
         <CardHeader>
           <CardTitle>Analyst Ratings</CardTitle>
@@ -109,7 +160,7 @@ export function OculusPrismSidebar({
         <CardContent>
           {analystRatings ? (
             <>
-              <p className="text-4xl font-bold text-primary">{analystRatings.recommendation}</p>
+              <p className="text-4xl font-bold text-primary capitalize">{analystRatings.recommendation}</p>
               <p className="text-muted-foreground">
                 Avg. Target: {typeof analystRatings.targetPrice === 'number'
                   ? `$${analystRatings.targetPrice.toFixed(2)}`
@@ -129,7 +180,6 @@ export function OculusPrismSidebar({
           <CardTitle>Key Statistics</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* TODO: Implement grouping and sector-average sparklines */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-4">
             {Object.entries(keyStats || {}).length > 0 ? (
               Object.entries(keyStats || {}).map(([key, value]) => (

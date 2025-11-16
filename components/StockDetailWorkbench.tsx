@@ -6,43 +6,64 @@ import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
 import { PremiumGate } from "./PremiumGate";
 import { FinancialScorecard } from "./FinancialScorecard";
 import { TechnicalAnalysis } from "./TechnicalAnalysis";
-import { Button } from "./ui/button";
-import { useState } from "react";
 import { AdvancedPriceChart } from "./AdvancedPriceChart";
-import { BrainCircuit, Newspaper } from 'lucide-react';
+import { BrainCircuit, Newspaper, MessageSquare } from 'lucide-react';
 import { FinancialStatementsTable } from "./FinancialStatementsTable";
-import { NewsFeed } from "./NewsFeed"; // Import the new component
+import { NewsFeed } from "./NewsFeed";
+import { StockDetailData, EventMarker, AiPattern } from "@/app/stock/[ticker]/page"; // Import types
+import { Skeleton } from "./ui/skeleton"; // Import Skeleton
 
 interface StockDetailWorkbenchProps {
-  ticker: string; // Ticker is needed for the NewsFeed
-  priceHistory: any[];
-  sentimentHistory: any[];
-  technicalIndicators: any;
-  aiSummary: string;
-  aiInsights: any[];
-  recentNews: any[]; // This prop is no longer used, but keeping it doesn't hurt
-  financialRatios: any;
-  financialStatements: any;
-  companyProfile: any;
+  data: StockDetailData | null; // Accept null data
   isPremium: boolean;
+  defaultTab: "chart" | "insights" | "financials" | "news" | "profile";
+  
+  // Kinetix: Props for "Living Chart"
+  newsEvents: EventMarker[];
+  aiPatterns: AiPattern[];
 }
 
 export function StockDetailWorkbench({
-  ticker,
-  priceHistory,
-  sentimentHistory,
-  technicalIndicators,
-  aiSummary,
-  aiInsights,
-  recentNews, // No longer used, but fine to leave
-  financialRatios,
-  financialStatements,
-  companyProfile,
+  data,
   isPremium,
+  defaultTab,
+  newsEvents,
+  aiPatterns,
 }: StockDetailWorkbenchProps) {
   
+  // Kinetix: Component-level loading state
+  const isLoading = !data;
+
+  // Destructure data with fallbacks
+  const {
+    ticker,
+    priceHistory,
+    sentiment,
+    technicalIndicators,
+    aiSummary,
+    aiInsights,
+    financialRatios,
+    financialStatements,
+    companyProfile,
+  } = data || {};
+
+  // --- Kinetix: "Calm Loading" Skeleton ---
+  if (isLoading) {
+    return (
+      <div>
+        <Skeleton className="h-10 w-full rounded-md" />
+        <Card className="mt-4">
+          <CardContent className="p-6">
+            <Skeleton className="h-[500px] w-full rounded-lg" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  // --- End Skeleton ---
+
   return (
-    <Tabs defaultValue="chart" className="w-full">
+    <Tabs defaultValue={defaultTab} className="w-full">
       <TabsList className="grid w-full grid-cols-5">
         <TabsTrigger value="chart">Chart</TabsTrigger>
         <TabsTrigger value="insights">AI Insights</TabsTrigger>
@@ -57,9 +78,12 @@ export function StockDetailWorkbench({
           <CardContent className="p-6">
             <div className="h-[500px] w-full">
               <AdvancedPriceChart
-                priceHistory={priceHistory}
-                sentimentHistory={sentimentHistory}
-                technicalIndicators={technicalIndicators}
+                priceHistory={priceHistory || []}
+                sentimentHistory={sentiment?.history || []}
+                technicalIndicators={technicalIndicators || {}}
+                // Kinetix: Pass "Living Chart" props
+                newsEvents={newsEvents}
+                aiPatterns={aiPatterns}
               />
             </div>
           </CardContent>
@@ -79,7 +103,30 @@ export function StockDetailWorkbench({
           </CardContent>
         </Card>
         
-        {/* TODO: Add AI Insights and Sentiment-Driving News cards here */}
+        {/* Kinetix: "Natural Language Insight Stream" */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-primary" /> Natural Language Stream</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-4">
+              {(aiInsights && aiInsights.length > 0) ? (
+                aiInsights.map((item) => (
+                  <div key={item.id} className="text-sm">
+                    <p className="leading-relaxed text-foreground">
+                      {item.naturalLanguage || item.insight}
+                    </p>
+                    <span className="text-xs text-muted-foreground">
+                      {item.timestamp || ""}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No AI insights to display.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </TabsContent>
 
       {/* Tab 3: Financials */}
@@ -95,8 +142,7 @@ export function StockDetailWorkbench({
 
       {/* Tab 4: News & Filings */}
       <TabsContent value="news" className="mt-4">
-        {/* This is the new component */}
-        <NewsFeed ticker={ticker} />
+        <NewsFeed ticker={ticker || ""} />
       </TabsContent>
 
       {/* Tab 5: Company Profile */}
@@ -107,7 +153,6 @@ export function StockDetailWorkbench({
             <p className="whitespace-pre-line text-muted-foreground">
               {companyProfile?.description || "Company profile data not yet available."}
             </p>
-            {/* TODO: Add other profile info (execs, industry, etc.) */}
           </CardContent>
         </Card>
       </TabsContent>

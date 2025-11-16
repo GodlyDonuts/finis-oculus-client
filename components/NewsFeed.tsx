@@ -3,9 +3,10 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { TrendingUp, TrendingDown, Minus, ExternalLink } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, ExternalLink, Library } from "lucide-react";
 
 // News item type to match our new API
 type NewsItem = {
@@ -18,7 +19,10 @@ type NewsItem = {
 };
 
 // Re-define the icon helper here for encapsulation
-const NewsSentimentIcon = ({ sentiment }: { sentiment: string }) => {
+const NewsSentimentIcon = ({ sentiment, source }: { sentiment: string, source: string }) => {
+  if (source === 'SEC EDGAR') {
+    return <Library className="h-5 w-5 flex-shrink-0 text-gray-500" />;
+  }
   if (sentiment === "positive") {
     return <TrendingUp className="h-5 w-5 flex-shrink-0 text-green-500" />;
   }
@@ -30,20 +34,21 @@ const NewsSentimentIcon = ({ sentiment }: { sentiment: string }) => {
 
 // --- The NewsFeed Component ---
 export function NewsFeed({ ticker }: { ticker: string }) {
+  const [filter, setFilter] = useState("all");
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true); // Now just loads once
+  const [isLoading, setIsLoading] = useState(false);
 
-  // This effect runs once when the ticker is available
+  // This effect runs when the filter or ticker changes
   useEffect(() => {
-    if (!ticker) {
-      return; // Don't fetch if ticker is empty
-    }
+    if (!ticker) return; // Don't fetch if ticker is empty
 
     const fetchNews = async () => {
       setIsLoading(true);
+      setNewsItems([]); // Clear old items
       try {
-        // Fetch from the simplified API
-        const res = await fetch(`/api/stock-news/${ticker}`);
+        const res = await fetch(
+          `/api/stock-news/${ticker}?filter=${filter}`
+        );
         
         if (!res.ok) {
           const errorData = await res.json();
@@ -61,13 +66,23 @@ export function NewsFeed({ ticker }: { ticker: string }) {
     };
 
     fetchNews();
-  }, [ticker]); // Only depends on ticker
+  }, [filter, ticker]); // Re-fetch when filter or ticker changes
 
   return (
     <Card>
       <CardContent className="pt-6">
-        {/* We no longer show filters */}
-        
+        {/* The filters now work with our new API */}
+        <ToggleGroup
+          type="single"
+          value={filter}
+          onValueChange={(value) => value && setFilter(value)}
+          className="mb-4 grid grid-cols-3"
+        >
+          <ToggleGroupItem value="all">All</ToggleGroupItem>
+          <ToggleGroupItem value="news">News</ToggleGroupItem>
+          <ToggleGroupItem value="filings">SEC Filings</ToggleGroupItem>
+        </ToggleGroup>
+
         <div className="flex flex-col gap-6">
           {isLoading && (
             // Show skeletons on initial load
@@ -77,7 +92,7 @@ export function NewsFeed({ ticker }: { ticker: string }) {
                   <Skeleton className="h-6 w-6 rounded-full" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-5 w-full rounded" />
-                    <Skeleton className="h-4 w-1/3 rounded" />
+                    <Skeleton className="h-4 w-1S/3 rounded" />
                   </div>
                 </div>
               ))}
@@ -88,7 +103,7 @@ export function NewsFeed({ ticker }: { ticker: string }) {
             <div className="flex flex-col gap-6">
               {newsItems.map((item) => (
                 <div key={item.id} className="flex items-start gap-4 border-b border-border/50 pb-6 last:border-b-0 last:pb-0">
-                  <NewsSentimentIcon sentiment={item.sentiment} />
+                  <NewsSentimentIcon sentiment={item.sentiment} source={item.source} />
                   <div className="flex-1">
                     <a
                       href={item.link}
@@ -112,11 +127,11 @@ export function NewsFeed({ ticker }: { ticker: string }) {
 
           {!isLoading && newsItems.length === 0 && (
             <p className="text-center text-muted-foreground">
-              No recent news items found for {ticker}.
+              No {filter} items found for {ticker}.
             </p>
           )}
 
-          {/* We no longer show a "Load More" button */}
+          {/* No more "Load More" button */}
         </div>
       </CardContent>
     </Card>

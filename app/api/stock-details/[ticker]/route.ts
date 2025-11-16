@@ -83,6 +83,21 @@ type StockDetailData = {
 };
 // --- END UPDATED TYPE ---
 
+// --- THIS IS THE FIX (Helper Types) ---
+// Helper types to ensure we filter out bad data
+type PriceHistoryPoint = {
+  name: string;
+  price: number | null | undefined;
+  volume: number | null | undefined;
+};
+type FinalPricePoint = {
+  name: string;
+  price: number;
+  volume: number;
+};
+// --- END FIX ---
+
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ ticker: string }> } // <-- FIX: Re-added Promise
@@ -145,15 +160,23 @@ export async function GET(
     const changeType =
       changeVal > 0 ? 'positive' : changeVal < 0 ? 'negative' : 'neutral';
 
+    // --- THIS IS THE FIX (Filtering) ---
+    // Map the data, leaving price as potentially null
     const priceHistory =
       historicalQuotes.map((q: any) => ({
         name: new Date(q.date).toLocaleString('en-US', {
           month: 'short',
           day: 'numeric',
         }),
-        price: q.close ?? q.adjclose ?? 0,
-        volume: q.volume ?? 0,
-      }));
+        price: q.close ?? q.adjclose, // Keep null/undefined
+        volume: q.volume ?? 0, // Default volume to 0
+      }))
+      // Filter out any entries where price is null, undefined, or 0
+      .filter(
+        (p: PriceHistoryPoint): p is FinalPricePoint => 
+          p.price != null && p.price > 0
+      );
+    // --- END FIX ---
 
     const recentNews: NewsItem[] = recentNewsRaw.map(
       (item: {

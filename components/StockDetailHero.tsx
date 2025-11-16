@@ -6,41 +6,37 @@ import { Plus, Minus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useAuth } from "@/context/authcontext"; // Assuming for user ID
+import { useAuth } from "@/context/authcontext";
+import { StockDetailData } from "@/app/stock/[ticker]/page"; // Import main type
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 
 interface StockDetailHeroProps {
-  ticker: string;
-  name: string;
-  exchange: string;
-  logoUrl: string;
-  price: number;
-  change: string;
-  changeType: "positive" | "negative" | "neutral";
-  marketState: "OPEN" | "CLOSED" | "PRE" | "POST";
-  // ... other pre/post market props
+  data: StockDetailData | null; // Accept null data
 }
 
-export function StockDetailHero({
-  ticker,
-  name,
-  exchange,
-  logoUrl,
-  price,
-  change,
-  changeType,
-  marketState,
-}: StockDetailHeroProps) {
-  
-  // TODO: Add logic for Add/Remove from Watchlist
+export function StockDetailHero({ data }: StockDetailHeroProps) {
+  // Kinetix: Component-level loading state
+  const isLoading = !data;
+
+  // Destructure data with fallbacks for "calm loading"
+  const {
+    ticker,
+    name,
+    exchange,
+    logoUrl,
+    price,
+    change,
+    changeType,
+    marketState,
+  } = data || {};
+
   const [isWatchlistLoading, setIsWatchlistLoading] = useState(false);
   const { user } = useAuth();
   
-  // Placeholder: This logic needs to be fully implemented
-  const isInWatchlist = false; // This needs to be passed down or fetched
+  const isInWatchlist = false; // Placeholder
   const handleWatchlistToggle = async () => {
     setIsWatchlistLoading(true);
     toast.info("Watchlist functionality to be implemented.");
-    // ... (Add/Remove logic here)
     setIsWatchlistLoading(false);
   };
 
@@ -51,15 +47,37 @@ export function StockDetailHero({
       ? "text-red-500"
       : "text-foreground";
 
+  // --- Kinetix: "Calm Loading" Skeletons ---
+  if (isLoading) {
+    return (
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-16 w-16 rounded-full" />
+          <div>
+            <Skeleton className="h-12 w-64 rounded-lg" />
+            <Skeleton className="mt-2 h-6 w-32 rounded-lg" />
+          </div>
+        </div>
+        <div className="mt-4 flex items-baseline gap-6 md:mt-0">
+          <div className="text-right">
+            <Skeleton className="h-12 w-40 rounded-lg" />
+            <Skeleton className="mt-2 h-6 w-56 rounded-lg" />
+          </div>
+          <Skeleton className="h-12 w-48 rounded-xl" />
+        </div>
+      </header>
+    );
+  }
+  // --- End Skeletons ---
+
   return (
     <header className="flex flex-col md:flex-row md:items-center md:justify-between">
       <div className="flex items-center gap-4">
-        {/* Logo (from API) */}
         {logoUrl ? (
           <img src={logoUrl} alt={`${name} Logo`} className="h-16 w-16 rounded-full" />
         ) : (
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted text-2xl font-semibold">
-            {ticker[0]}
+            {ticker ? ticker[0] : ""}
           </div>
         )}
         <div>
@@ -85,7 +103,6 @@ export function StockDetailHero({
               {marketState === "OPEN" ? "Market Open" : "Market Closed"}
             </span>
           </div>
-          {/* TODO: Add Pre/Post Market Price Display Here */}
         </div>
 
         <Button

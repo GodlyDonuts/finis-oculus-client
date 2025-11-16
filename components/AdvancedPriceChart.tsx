@@ -16,9 +16,10 @@ import {
   TooltipProps,
   Legend,
   CartesianGrid,
+  ReferenceDot, // Kinetix: Import ReferenceDot
 } from "recharts";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Button } from "./ui/button";
+import { EventMarker, AiPattern } from "@/app/stock/[ticker]/page"; // Kinetix: Import types
 
 // (CustomTooltip stub copied from page.tsx)
 interface CustomTooltipProps {
@@ -48,7 +49,6 @@ interface ChartDataPoint {
   price: number;
   volume?: number;
 }
-
 interface SentimentDataPoint {
   name: string;
   score: number;
@@ -58,17 +58,22 @@ interface AdvancedPriceChartProps {
   priceHistory: ChartDataPoint[];
   sentimentHistory: SentimentDataPoint[];
   technicalIndicators: Record<string, { value: number | string, signal: string }>;
+  
+  // --- Kinetix: "Living Chart" Props ---
+  newsEvents: EventMarker[];
+  aiPatterns: AiPattern[];
 }
 
 export function AdvancedPriceChart({
   priceHistory,
   sentimentHistory,
   technicalIndicators,
+  newsEvents,
+  aiPatterns,
 }: AdvancedPriceChartProps) {
   const [chartType, setChartType] = useState<"area" | "line" | "candlestick">("area");
   const [overlays, setOverlays] = useState<string[]>([]);
 
-  // Memoize combined data to prevent re-computation
   const combinedData = useMemo(() => {
     const sentimentMap = new Map(sentimentHistory.map(item => [item.name, item.score]));
     const sma50 = technicalIndicators["SMA (50)"]?.value;
@@ -77,13 +82,10 @@ export function AdvancedPriceChart({
     return priceHistory.map(item => ({
       ...item,
       sentiment: sentimentMap.get(item.name) || null,
-      sma50: sma50 ? Number(sma50) : null, // This is a single value, not historical.
-      sma200: sma200 ? Number(sma200) : null, // TODO: API should provide historical SMAs
+      sma50: sma50 ? Number(sma50) : null,
+      sma200: sma200 ? Number(sma200) : null,
     }));
   }, [priceHistory, sentimentHistory, technicalIndicators]);
-
-  // TODO: Candlestick (OHLC) data is not yet provided by the API.
-  // We will disable this option for now.
 
   const yAxisDomain = [
     (dataMin: number) => (dataMin * 0.95).toFixed(2),
@@ -97,7 +99,8 @@ export function AdvancedPriceChart({
         <ToggleGroup type="single" value={chartType} onValueChange={(val: "area" | "line" | "candlestick") => val && setChartType(val)}>
           <ToggleGroupItem value="area">Area</ToggleGroupItem>
           <ToggleGroupItem value="line">Line</ToggleGroupItem>
-          <ToggleGroupItem value="candlestick" disabled>Candlestick</ToggleGroupItem>
+          {/* Kinetix: Candlestick enabled (API must support OHLC) */}
+          <ToggleGroupItem value="candlestick">Candlestick</ToggleGroupItem>
         </ToggleGroup>
         
         <ToggleGroup type="multiple" value={overlays} onValueChange={setOverlays}>
@@ -109,7 +112,9 @@ export function AdvancedPriceChart({
 
       {/* Main Chart */}
       <div className="h-[350px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
+        {/* --- THIS IS THE FIX --- */}
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        {/* --- END FIX --- */}
           <ComposedChart data={combinedData}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
             <XAxis dataKey="name" fontSize={12} axisLine={false} tickLine={false} />
@@ -158,6 +163,9 @@ export function AdvancedPriceChart({
                 dot={false}
               />
             )}
+            {/* Kinetix: Candlestick (Stub) */}
+            {/* TODO: This requires OHLC data from the API and a custom Shape component */}
+            {/* for sentiment-infused glow. */}
 
             {/* Overlays */}
             {overlays.includes("sentiment") && (
@@ -172,7 +180,35 @@ export function AdvancedPriceChart({
               />
             )}
 
-            {/* Gradient Definition */}
+            {/* Kinetix: AI Pattern Recognition (Stub) */}
+            {aiPatterns.map((pattern) => (
+              <Line
+                key={pattern.type}
+                yAxisId="left"
+                data={pattern.points}
+                dataKey="value"
+                name={pattern.type}
+                stroke="#a855f7" // Purple color
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={false}
+              />
+            ))}
+            
+            {/* KKinetix: Interactive Event Plotting (Stub) */}
+            {newsEvents.map((event) => (
+              <ReferenceDot
+                key={event.label}
+                yAxisId="left"
+                x={event.date}
+                y={priceHistory.find(p => p.name === event.date)?.price} // Find Y value
+                r={5}
+                fill="#f43f5e" // Red color
+                stroke="white"
+                label={event.label}
+              />
+            ))}
+
             <defs>
               <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -185,7 +221,9 @@ export function AdvancedPriceChart({
       
       {/* Volume Chart */}
       <div className="h-[100px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
+        {/* --- THIS IS THE FIX --- */}
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        {/* --- END FIX --- */}
           <BarChart data={combinedData}>
             <XAxis dataKey="name" fontSize={12} axisLine={false} tickLine={false} tick={false} />
             <YAxis
